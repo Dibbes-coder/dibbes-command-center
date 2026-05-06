@@ -65,7 +65,7 @@ dibbes-command-center/
 ### 1. Create the GitHub repository
 
 1. Download or unzip this project folder.
-2. Go to GitHub..
+2. Go to GitHub.
 3. Click **New repository**.
 4. Name it, for example: `dibbes-command-center`.
 5. Keep it private or public — your choice.
@@ -99,7 +99,7 @@ No environment variables are needed.
 
 After deployment, open the Vercel URL. Your data will be stored in that browser’s `localStorage`.
 
-Important: because this MVP has no backend, data is device/browser-specific. If you open it on another device, it will start with fresh local data.
+Important: because this MVP has no backend, data is device/browser-specific.. If you open it on another device, it will start with fresh local data.
 
 ---
 
