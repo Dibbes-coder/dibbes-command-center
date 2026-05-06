@@ -2,162 +2,82 @@
 
 **Signal. Speed. Precision.**
 
-A browser-based MVP personal AI dashboard for capturing and organizing:
-
-- Ideas
-- X posts
-- Image prompts
-- Projects
-- Experiments
-- AI workflows
-
-This is intentionally **local-first**: no backend, no auth, no database. Data is stored in `localStorage` in the browser.
-
----
+A clean, Vercel-deployable Next.js App Router dashboard for capturing AI signals, prompts, projects, workflows, experiments, and ship-ready ideas.
 
 ## What is included
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Browser-only localStorage persistence
-- Create, edit, delete items
-- Fields: title, type, status, energy, tags, content, next action, created date, updated date
+- Postgres database persistence through `DATABASE_URL` or Vercel Postgres `POSTGRES_URL`
+- Automatic database table creation on first request
+- Sample data seeded when the database is empty
+- localStorage fallback when no database is configured
+- Create, edit, and delete items
 - Dashboard counts by type and status
-- Search
-- Filters by type, status, and tag
-- Dedicated views:
-  - Dashboard
-  - Ready to Ship
-  - Raw Signals
-  - Prompt Lab
+- Search and filters for type, status, and tag
+- Ready to Ship, Raw Signals, and Prompt Lab views
 - JSON export
-- Premium dark command-center UI
+- Commented future integration points for Notion sync and OpenAI API features
 
----
+## Root structure
 
-## File structure
-
-```txt
-dibbes-command-center/
-├─ app/
-│  ├─ globals.css          # Global Tailwind styles and reusable field styling
-│  ├─ layout.tsx           # App metadata and root layout
-│  └─ page.tsx             # Main route
-├─ components/
-│  └─ CommandCenter.tsx    # Complete client-side MVP UI and interactions
-├─ lib/
-│  ├─ items.ts             # Item types, helpers, creation/update utilities
-│  ├─ sample-data.ts       # First-run seed items
-│  └─ storage.ts           # localStorage persistence + future sync hook comments
-├─ next.config.ts
-├─ package.json
-├─ postcss.config.mjs
-├─ tailwind.config.ts
-├─ tsconfig.json
-└─ README.md
+```text
+app/page.tsx
+app/layout.tsx
+app/globals.css
+app/api/items/route.ts
+app/api/items/[id]/route.ts
+app/api/items/seed/route.ts
+components/CommandCenter.tsx
+lib/db.ts
+lib/items.ts
+lib/storage.ts
+lib/sample-data.ts
+package.json
+README.md
+next.config.ts
+tailwind.config.ts
+postcss.config.mjs
+tsconfig.json
 ```
 
----
+## Database setup
 
-## Deploy to Vercel without running anything locally
+Create a Postgres database in Vercel, Neon, Supabase, Railway, or any hosted Postgres provider. Add one of these environment variables to Vercel:
 
-### 1. Create the GitHub repository
+```bash
+DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+```
 
-1. Download or unzip this project folder.
-2. Go to GitHub.
-3. Click **New repository**.
-4. Name it, for example: `dibbes-command-center`.
-5. Keep it private or public — your choice.
-6. Create the repo **without** adding a README, license, or `.gitignore`, because this package already includes them.
+Vercel Postgres also works with:
 
-### 2. Upload the files to GitHub
+```bash
+POSTGRES_URL="postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+```
 
-1. Open the new empty GitHub repo.
-2. Click **Add file → Upload files**.
-3. Drag the **contents** of this folder into GitHub.
-   - Upload `app`, `components`, `lib`, `package.json`, `README.md`, etc.
-   - Do **not** upload a parent folder around the project.
-4. Click **Commit changes**.
+The app creates the `command_items` table and indexes automatically on the first API request, then seeds the sample data if the table is empty.
 
-### 3. Import into Vercel
+If neither variable exists, the app remains usable through the built-in localStorage fallback and displays that mode in the header.
 
-1. Go to the Vercel dashboard.
-2. Click **Add New → Project**.
-3. Import the GitHub repository.
-4. Vercel should auto-detect **Next.js**.
-5. Keep defaults:
-   - Framework Preset: `Next.js`
-   - Install Command: `npm install`
-   - Build Command: `npm run build`
-   - Output Directory: leave default
-6. Click **Deploy**.
-
-No environment variables are needed.
-
-### 4. Use it
-
-After deployment, open the Vercel URL. Your data will be stored in that browser’s `localStorage`.
-
-Important: because this MVP has no backend, data is device/browser-specific.. If you open it on another device, it will start with fresh local data.
-
----
-
-## Optional local commands
-
-Only for environments where local Node usage is allowed:
+## Local development
 
 ```bash
 npm install
 npm run dev
+```
+
+Open <http://localhost:3000>.
+
+To test database persistence locally, create a `.env.local` file with `DATABASE_URL` and restart the dev server.
+
+## Production build
+
+```bash
 npm run build
+npm start
 ```
 
----
+## Vercel deployment
 
-## Future upgrade points
-
-### Notion sync
-
-See `lib/storage.ts`:
-
-```ts
-// Future Notion sync hook:
-// Queue changed items here and sync them to a Notion database once auth/backend exists.
-```
-
-Recommended next version:
-
-- Add auth
-- Create a Notion database schema matching the item model
-- Add `/api/notion-sync`
-- Sync changed items from localStorage to Notion
-- Pull Notion items back into the dashboard
-
-### OpenAI API features
-
-See `components/CommandCenter.tsx` near the composer footer:
-
-```tsx
-Future OpenAI API hook: add a server route here later to turn rough content into variants, summaries, image prompts or next actions.
-```
-
-Recommended next AI features:
-
-- Turn raw signal into 5 X post variants
-- Improve image prompts
-- Generate next actions
-- Classify type/status automatically
-- Score “ship readiness”
-- Create reusable AI workflow templates
-
----
-
-## MVP philosophy
-
-This is not a todo app.
-
-It is a personal creative command center:
-
-> Capture weak signals fast. Shape what has voltage. Ship before the spark cools.
-
+Deploy this repository directly from GitHub on Vercel. Add `DATABASE_URL` or connect Vercel Postgres in the project settings for durable persistence.
