@@ -2,7 +2,7 @@
 
 **Signal. Speed. Precision.**
 
-A clean, Vercel-deployable Next.js App Router execution dashboard for capturing signals, refining them into useful assets, copying execution-ready output, and marking work complete.
+A clean, Vercel-deployable Next.js App Router execution dashboard focused on one loop: add, execute, store.
 
 ## What is included
 
@@ -22,9 +22,8 @@ A clean, Vercel-deployable Next.js App Router execution dashboard for capturing 
   - Project / Experiment / Idea checklist
 - Execution notes saved back to each item
 - `Executed` status and Mark executed flow
-- Dashboard counts by type and status
 - Search and filters for type, status, and tag
-- Ready to Ship, Raw Signals, Prompt Lab, and Executed views
+- Simple saved-item views for Ready to Ship, Raw Signals, Prompt Lab, and Executed work
 - JSON export and Delete all data control
 - OpenAI execution uses the Responses API when `OPENAI_API_KEY` is configured
 

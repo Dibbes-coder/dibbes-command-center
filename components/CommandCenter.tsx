@@ -96,19 +96,6 @@ export default function CommandCenter() {
     [items],
   );
 
-  const counts = useMemo(
-    () => ({
-      total: items.length,
-      ready: items.filter((item) => item.status === "Ready to Ship").length,
-      raw: items.filter((item) => item.status === "Raw").length,
-      prompts: items.filter((item) => item.type === "Prompt" || item.type === "AI Workflow").length,
-      executed: items.filter((item) => item.status === "Executed").length,
-      byType: ITEM_TYPES.map((type) => ({ label: type, count: countItems(items, "type", type) })),
-      byStatus: ITEM_STATUSES.map((status) => ({ label: status, count: countItems(items, "status", status) })),
-    }),
-    [items],
-  );
-
   const visibleItems = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
 
@@ -286,8 +273,8 @@ export default function CommandCenter() {
                 Dibbes Command Center
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                A local execution dashboard for capturing signals, refining useful assets,
-                copying what is ready, and marking the work executed.
+                Add, execute, and store useful work. Capture signals, turn them into
+                action, and keep the execution record in this browser.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -299,27 +286,13 @@ export default function CommandCenter() {
           </div>
         </header>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric label="Total" value={counts.total} help="Everything saved in this browser." />
-          <Metric label="Ready" value={counts.ready} help="Polished items ready to copy or run." />
-          <Metric label="Raw" value={counts.raw} help="Signals waiting for refinement." />
-          <Metric label="Prompt Lab" value={counts.prompts} help="Prompts and AI workflows to test." />
-          <Metric label="Executed" value={counts.executed} help="Items already completed." />
-        </section>
-
-        <section className="grid gap-3 lg:grid-cols-2">
-          <CountPanel title="By type" rows={counts.byType} />
-          <CountPanel title="By status" rows={counts.byStatus} />
-        </section>
-
         <section className="surface rounded-[2rem] p-5 text-sm leading-6 text-zinc-400">
-          <h2 className="mb-3 text-base font-semibold text-white">How to use this</h2>
-          <ol className="grid gap-3 sm:grid-cols-4">
-            <li><strong className="text-amber-200">1. Capture</strong><br />Save a raw signal before it disappears.</li>
-            <li><strong className="text-amber-200">2. Refine</strong><br />Add type, tags, content, and the next action.</li>
-            <li><strong className="text-amber-200">3. Execute</strong><br />Open the execution panel and copy the ready asset.</li>
-            <li><strong className="text-amber-200">4. Mark ready/executed</strong><br />Move work to Ready to Ship or Executed.</li>
-          </ol>
+          <h2 className="text-base font-semibold text-white">Add. Execute. Store.</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <FlowStep title="Add" text="Capture a raw signal, prompt, post, project, or idea before it disappears." />
+            <FlowStep title="Execute" text="Open the execution panel to copy a local output or generate one with OpenAI." />
+            <FlowStep title="Store" text="Save execution notes, mark the item executed, and keep everything in localStorage." />
+          </div>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -565,38 +538,15 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-function Metric({ label, value, help }: { label: string; value: number; help: string }) {
+function FlowStep({ title, text }: { title: string; text: string }) {
   return (
-    <div className="surface rounded-3xl p-5" title={help}>
-      <p className="label">{label}</p>
-      <p className="mt-4 text-4xl font-semibold text-white">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-zinc-500">{help}</p>
+    <div className="rounded-3xl border border-white/10 bg-black/25 p-4">
+      <p className="text-sm font-semibold text-amber-200">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-500">{text}</p>
     </div>
   );
 }
 
-function CountPanel({ title, rows }: { title: string; rows: { label: string; count: number }[] }) {
-  const max = Math.max(1, ...rows.map((row) => row.count));
-
-  return (
-    <div className="surface rounded-3xl p-5">
-      <h2 className="label">{title}</h2>
-      <div className="mt-4 space-y-3">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="mb-1 flex justify-between text-sm text-zinc-400">
-              <span>{row.label}</span>
-              <span>{row.count}</span>
-            </div>
-            <div className="h-2 rounded-full bg-white/10">
-              <div className="h-2 rounded-full bg-amber-300" style={{ width: `${(row.count / max) * 100}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Select({
   label,
@@ -622,14 +572,6 @@ function Select({
       </select>
     </label>
   );
-}
-
-function countItems<T extends "type" | "status">(
-  items: CommandItem[],
-  key: T,
-  value: CommandItem[T],
-): number {
-  return items.filter((item) => item[key] === value).length;
 }
 
 type ExecutionContent =
