@@ -8,6 +8,7 @@ import {
   emptyDraft,
   itemToDraft,
   makeItem,
+  markItemExecuted,
   parseTags,
   readableDate,
   reviseItem,
@@ -17,11 +18,10 @@ import {
   type ItemStatus,
   type ItemType,
 } from "@/lib/items";
-import { downloadItems, loadItems, saveItems, seedSampleItems } from "@/lib/storage";
+import { deleteAllItems, downloadItems, loadItems, saveItems, seedSampleItems } from "@/lib/storage";
 
-type ViewMode = "All" | "Ready to Ship" | "Raw Signals" | "Prompt Lab";
+type ViewMode = "All" | "Ready to Ship" | "Raw Signals" | "Prompt Lab" | "Executed";
 type SelectAll<T extends string> = "All" | T;
-type StorageMode = "checking" | "database" | "local";
 
 type Filters = {
   query: string;
@@ -29,13 +29,6 @@ type Filters = {
   status: SelectAll<ItemStatus>;
   tag: string;
   view: ViewMode;
-};
-
-type ItemsResponse = {
-  database: boolean;
-  items?: CommandItem[];
-  item?: CommandItem;
-  error?: string;
 };
 
 const initialFilters: Filters = {
@@ -46,50 +39,28 @@ const initialFilters: Filters = {
   view: "All",
 };
 
+const viewHelp: Record<ViewMode, string> = {
+  All: "Everything in your local command center.",
+  "Ready to Ship": "Items polished enough to copy, publish, or run now.",
+  "Raw Signals": "Unrefined ideas that need a next action.",
+  "Prompt Lab": "Prompts and AI workflows ready to test with a model.",
+  Executed: "Completed moves and notes from what happened.",
+};
+
 export default function CommandCenter() {
   const [items, setItems] = useState<CommandItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [tagText, setTagText] = useState("");
   const [filters, setFilters] = useState<Filters>(initialFilters);
-  const [storageMode, setStorageMode] = useState<StorageMode>("checking");
-  const [notice, setNotice] = useState("Connecting to database...");
-  const [isSaving, setIsSaving] = useState(false);
+  const [executionItem, setExecutionItem] = useState<CommandItem | null>(null);
+  const [executionNotes, setExecutionNotes] = useState("");
+  const [clipboardNotice, setClipboardNotice] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    const localItems = loadItems();
-
-    setItems(localItems);
-    setActiveId(localItems[0]?.id ?? null);
-
-    async function hydrateFromDatabase() {
-      try {
-        const response = await fetch("/api/items", { cache: "no-store" });
-        const payload = (await response.json()) as ItemsResponse;
-
-        if (!response.ok || !payload.items) {
-          throw new Error(payload.error ?? "Database unavailable.");
-        }
-
-        if (cancelled) return;
-        setItems(payload.items);
-        setActiveId(payload.items[0]?.id ?? null);
-        saveItems(payload.items);
-        setStorageMode("database");
-        setNotice("Database connected. Changes are persisted to Postgres.");
-      } catch (error) {
-        if (cancelled) return;
-        setStorageMode("local");
-        setNotice(`${error instanceof Error ? error.message : "Database unavailable."} Using localStorage fallback.`);
-      }
-    }
-
-    void hydrateFromDatabase();
-
-    return () => {
-      cancelled = true;
-    };
+    const stored = loadItems();
+    setItems(stored);
+    setActiveId(stored[0]?.id ?? null);
   }, []);
 
   const activeItem = useMemo(
@@ -119,7 +90,8 @@ export default function CommandCenter() {
       total: items.length,
       ready: items.filter((item) => item.status === "Ready to Ship").length,
       raw: items.filter((item) => item.status === "Raw").length,
-      prompts: items.filter((item) => item.type === "Prompt").length,
+      prompts: items.filter((item) => item.type === "Prompt" || item.type === "AI Workflow").length,
+      executed: items.filter((item) => item.status === "Executed").length,
       byType: ITEM_TYPES.map((type) => ({ label: type, count: countItems(items, "type", type) })),
       byStatus: ITEM_STATUSES.map((status) => ({ label: status, count: countItems(items, "status", status) })),
     }),
@@ -138,6 +110,7 @@ export default function CommandCenter() {
         item.tags.join(" "),
         item.content,
         item.nextAction,
+        item.executionNotes,
       ]
         .join(" ")
         .toLowerCase();
@@ -148,13 +121,14 @@ export default function CommandCenter() {
       if (filters.tag !== "All" && !item.tags.includes(filters.tag)) return false;
       if (filters.view === "Ready to Ship" && item.status !== "Ready to Ship") return false;
       if (filters.view === "Raw Signals" && item.status !== "Raw") return false;
-      if (filters.view === "Prompt Lab" && item.type !== "Prompt") return false;
+      if (filters.view === "Prompt Lab" && item.type !== "Prompt" && item.type !== "AI Workflow") return false;
+      if (filters.view === "Executed" && item.status !== "Executed") return false;
 
       return true;
     });
   }, [filters, items]);
 
-  function persistLocal(nextItems: CommandItem[]) {
+  function persist(nextItems: CommandItem[]) {
     setItems(nextItems);
     saveItems(nextItems);
   }
@@ -163,90 +137,96 @@ export default function CommandCenter() {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
-  async function createBlankItem() {
-    const blank = {
+  function createBlankItem() {
+    const item = makeItem({
       ...emptyDraft,
-      title: "New signal",
+      title: "New raw signal",
       content: "Capture the signal before it decays.",
-      nextAction: "Clarify the next action.",
-    };
+      nextAction: "Refine this into one clear next move.",
+    });
 
-    if (storageMode === "database") {
-      const created = await createDatabaseItem(blank, handleDatabaseFailure);
-      if (created) {
-        const nextItems = [created, ...items];
-        persistLocal(nextItems);
-        setActiveId(created.id);
-        return;
-      }
-    }
-
-    const item = makeItem(blank);
-    persistLocal([item, ...items]);
+    persist([item, ...items]);
     setActiveId(item.id);
   }
 
-  async function saveDraft() {
+  function saveDraft() {
     const nextDraft = { ...draft, tags: parseTags(tagText) };
-    setIsSaving(true);
 
-    try {
-      if (!activeItem) {
-        const created = storageMode === "database" ? await createDatabaseItem(nextDraft, handleDatabaseFailure) : null;
-        const item = created ?? makeItem(nextDraft);
-        persistLocal([item, ...items]);
-        setActiveId(item.id);
-        return;
-      }
-
-      const updated = storageMode === "database" ? await updateDatabaseItem(activeItem.id, nextDraft, handleDatabaseFailure) : null;
-      const nextItem = updated ?? reviseItem(activeItem, nextDraft);
-      persistLocal(items.map((item) => (item.id === activeItem.id ? nextItem : item)));
-    } finally {
-      setIsSaving(false);
+    if (!activeItem) {
+      const item = makeItem(nextDraft);
+      persist([item, ...items]);
+      setActiveId(item.id);
+      return;
     }
+
+    persist(items.map((item) => (item.id === activeItem.id ? reviseItem(item, nextDraft) : item)));
   }
 
-  async function deleteActiveItem() {
-    if (!activeItem) return;
-    setIsSaving(true);
+  function requestDeleteItem(item: CommandItem) {
+    const confirmed = window.confirm(`Delete "${item.title}"? This removes it from localStorage immediately.`);
+    if (!confirmed) return;
 
-    try {
-      if (storageMode === "database") {
-        const deleted = await deleteDatabaseItem(activeItem.id, handleDatabaseFailure);
-        if (!deleted) {
-          setNotice("Database delete failed. Removed locally so the interface stays usable.");
-        }
-      }
-
-      const nextItems = items.filter((item) => item.id !== activeItem.id);
-      persistLocal(nextItems);
-      setActiveId(nextItems[0]?.id ?? null);
-    } finally {
-      setIsSaving(false);
-    }
+    const nextItems = items.filter((current) => current.id !== item.id);
+    persist(nextItems);
+    if (activeId === item.id) setActiveId(nextItems[0]?.id ?? null);
+    if (executionItem?.id === item.id) setExecutionItem(null);
   }
 
-  async function restoreSamples() {
-    if (storageMode === "database") {
-      const seeded = await seedDatabaseItems(handleDatabaseFailure);
+  function requestDeleteAllData() {
+    const confirmed = window.confirm(
+      "Delete ALL Dibbes Command Center data from this browser? This cannot be undone. Export JSON first if you need a backup.",
+    );
+    if (!confirmed) return;
 
-      if (seeded) {
-        persistLocal(seeded);
-        setActiveId(seeded[0]?.id ?? null);
-        return;
-      }
-    }
+    deleteAllItems();
+    setItems([]);
+    setActiveId(null);
+    setExecutionItem(null);
+  }
 
+  function restoreSamples() {
     const seeded = seedSampleItems();
     setItems(seeded);
     setActiveId(seeded[0]?.id ?? null);
   }
 
-  function handleDatabaseFailure(message: string) {
-    setStorageMode("local");
-    setNotice(`${message} Using localStorage fallback until the database is reachable again.`);
+  function openExecution(item: CommandItem) {
+    setExecutionItem(item);
+    setExecutionNotes(item.executionNotes);
+    setClipboardNotice("");
   }
+
+  function saveExecutionNotes() {
+    if (!executionItem) return;
+
+    const updated = reviseItem(executionItem, {
+      ...itemToDraft(executionItem),
+      executionNotes,
+    });
+    persist(items.map((item) => (item.id === updated.id ? updated : item)));
+    setExecutionItem(updated);
+  }
+
+  function markExecuted() {
+    if (!executionItem) return;
+
+    const updated = markItemExecuted(executionItem, executionNotes);
+    persist(items.map((item) => (item.id === updated.id ? updated : item)));
+    setExecutionItem(updated);
+    setActiveId(updated.id);
+    setClipboardNotice("Marked executed.");
+  }
+
+  async function copyText(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setClipboardNotice(`${label} copied to clipboard.`);
+    } catch {
+      setClipboardNotice("Clipboard copy failed. Select the text and copy it manually.");
+    }
+  }
+
+  const executionContent = executionItem ? buildExecutionContent(executionItem) : null;
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
@@ -263,30 +243,25 @@ export default function CommandCenter() {
                 Dibbes Command Center
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                A database-backed personal AI dashboard for raw signals, prompt experiments,
-                active workflows, and work that is ready to ship.
+                A local execution dashboard for capturing signals, refining useful assets,
+                copying what is ready, and marking the work executed.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="btn-primary" onClick={() => void createBlankItem()} disabled={isSaving}>Create item</button>
+              <button className="btn-primary" onClick={createBlankItem}>Capture signal</button>
               <button className="btn-secondary" onClick={() => downloadItems(items)}>Export JSON</button>
-              <button className="btn-secondary" onClick={() => void restoreSamples()} disabled={isSaving}>Seed sample data</button>
+              <button className="btn-secondary" onClick={restoreSamples}>Seed samples</button>
+              <button className="btn-danger" onClick={requestDeleteAllData}>Delete all data</button>
             </div>
-          </div>
-          <div className="mt-6 rounded-3xl border border-white/10 bg-black/35 p-4 text-sm leading-6 text-zinc-400">
-            <span className={storageMode === "database" ? "text-emerald-300" : "text-amber-300"}>
-              {storageMode === "database" ? "Postgres database active" : storageMode === "checking" ? "Checking database" : "Local fallback active"}
-            </span>
-            <span className="px-2 text-zinc-600">/</span>
-            {notice}
           </div>
         </header>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Total" value={counts.total} />
-          <Metric label="Ready to Ship" value={counts.ready} />
-          <Metric label="Raw Signals" value={counts.raw} />
-          <Metric label="Prompt Lab" value={counts.prompts} />
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric label="Total" value={counts.total} help="Everything saved in this browser." />
+          <Metric label="Ready" value={counts.ready} help="Polished items ready to copy or run." />
+          <Metric label="Raw" value={counts.raw} help="Signals waiting for refinement." />
+          <Metric label="Prompt Lab" value={counts.prompts} help="Prompts and AI workflows to test." />
+          <Metric label="Executed" value={counts.executed} help="Items already completed." />
         </section>
 
         <section className="grid gap-3 lg:grid-cols-2">
@@ -294,24 +269,38 @@ export default function CommandCenter() {
           <CountPanel title="By status" rows={counts.byStatus} />
         </section>
 
+        <section className="surface rounded-[2rem] p-5 text-sm leading-6 text-zinc-400">
+          <h2 className="mb-3 text-base font-semibold text-white">How to use this</h2>
+          <ol className="grid gap-3 sm:grid-cols-4">
+            <li><strong className="text-amber-200">1. Capture</strong><br />Save a raw signal before it disappears.</li>
+            <li><strong className="text-amber-200">2. Refine</strong><br />Add type, tags, content, and the next action.</li>
+            <li><strong className="text-amber-200">3. Execute</strong><br />Open the execution panel and copy the ready asset.</li>
+            <li><strong className="text-amber-200">4. Mark ready/executed</strong><br />Move work to Ready to Ship or Executed.</li>
+          </ol>
+        </section>
+
         <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
           <aside className="surface rounded-[2rem] p-4">
             <div className="grid gap-3">
               <input
                 className="field"
+                aria-label="Search saved items"
                 placeholder="Search titles, tags, content..."
                 value={filters.query}
                 onChange={(event) => setFilters({ ...filters, query: event.target.value })}
               />
+              <p className="text-xs leading-5 text-zinc-500">Search looks across titles, tags, content, next actions, and execution notes.</p>
               <div className="grid grid-cols-2 gap-3">
                 <Select
                   label="Type"
+                  help="What kind of work this is. Execution changes by type."
                   value={filters.type}
                   options={["All", ...ITEM_TYPES]}
                   onChange={(value) => setFilters({ ...filters, type: value as SelectAll<ItemType> })}
                 />
                 <Select
                   label="Status"
+                  help="Where this item is in the capture → execute loop."
                   value={filters.status}
                   options={["All", ...ITEM_STATUSES]}
                   onChange={(value) => setFilters({ ...filters, status: value as SelectAll<ItemStatus> })}
@@ -319,14 +308,16 @@ export default function CommandCenter() {
               </div>
               <Select
                 label="Tag"
+                help="Use tags to group themes, clients, campaigns, or models."
                 value={filters.tag}
                 options={["All", ...tags]}
                 onChange={(value) => setFilters({ ...filters, tag: value })}
               />
               <div className="grid grid-cols-2 gap-2">
-                {(["All", "Ready to Ship", "Raw Signals", "Prompt Lab"] as ViewMode[]).map((view) => (
+                {(["All", "Ready to Ship", "Raw Signals", "Prompt Lab", "Executed"] as ViewMode[]).map((view) => (
                   <button
                     key={view}
+                    title={viewHelp[view]}
                     className={`rounded-2xl border px-3 py-3 text-xs font-bold transition ${
                       filters.view === view
                         ? "border-amber-300/60 bg-amber-300/10 text-amber-100"
@@ -338,34 +329,36 @@ export default function CommandCenter() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs leading-5 text-zinc-500">{viewHelp[filters.view]}</p>
             </div>
 
             <div className="mt-4 space-y-3">
               {visibleItems.map((item) => (
-                <button
+                <article
                   key={item.id}
-                  className={`w-full rounded-3xl border p-4 text-left transition hover:border-amber-300/50 ${
+                  className={`rounded-3xl border p-4 transition hover:border-amber-300/50 ${
                     activeId === item.id ? "border-amber-300/70 bg-amber-300/10" : "border-white/10 bg-black/25"
                   }`}
-                  onClick={() => setActiveId(item.id)}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <h2 className="font-semibold text-white">{item.title}</h2>
-                    <span className="chip shrink-0">{item.energy}</span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{item.content}</p>
+                  <button className="w-full text-left" onClick={() => setActiveId(item.id)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="font-semibold text-white">{item.title}</h2>
+                      <span className="chip shrink-0">{item.energy}</span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{item.content}</p>
+                  </button>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="chip">{item.type}</span>
                     <span className="chip">{item.status}</span>
                     {item.tags.slice(0, 2).map((tag) => <span className="chip" key={tag}>#{tag}</span>)}
                   </div>
-                </button>
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:flex">
+                    <button className="btn-primary px-4 py-2" onClick={() => openExecution(item)}>Execute</button>
+                    <button className="btn-danger px-4 py-2" onClick={() => requestDeleteItem(item)}>Delete</button>
+                  </div>
+                </article>
               ))}
-              {visibleItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-white/15 p-6 text-sm leading-6 text-zinc-500">
-                  No matching items. Reset filters or create a new signal.
-                </div>
-              ) : null}
+              {visibleItems.length === 0 ? <EmptyState onCreate={createBlankItem} /> : null}
             </div>
           </aside>
 
@@ -376,32 +369,43 @@ export default function CommandCenter() {
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
                   {activeItem ? "Refine item" : "Create item"}
                 </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">Edit the saved item, then use Execute when it is ready to copy or complete.</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button className="btn-primary" disabled={isSaving} onClick={() => void saveDraft()}>{isSaving ? "Saving..." : "Save"}</button>
-                <button className="btn-danger" disabled={!activeItem || isSaving} onClick={() => void deleteActiveItem()}>Delete</button>
+                <button className="btn-primary" onClick={saveDraft}>Save</button>
+                <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
+                <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label className="label md:col-span-2">
                 Title
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
                 <input className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
               </label>
-              <Select label="Type" value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
-              <Select label="Status" value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
-              <Select label="Energy" value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
+              <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
+              <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
+              <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
               <label className="label">
                 Tags
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
                 <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
               </label>
               <label className="label md:col-span-2">
                 Content
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
                 <textarea className="field mt-2 min-h-36 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
               </label>
               <label className="label md:col-span-2">
                 Next action
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
                 <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
+              </label>
+              <label className="label md:col-span-2">
+                Execution notes
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
+                <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
               </label>
             </div>
 
@@ -413,94 +417,92 @@ export default function CommandCenter() {
             <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100/80">
               {/* Future OpenAI API integration point: summarize content, generate tags, improve prompts, or suggest the next action from this draft. */}
               OpenAI integration point reserved for future classify, summarize, rewrite,
-              prompt-expand, and next-action generation flows.
+              prompt-expand, and next-action generation flows. Today, execution is fully browser-only.
             </div>
           </section>
         </section>
       </div>
+
+      {executionItem && executionContent ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6" role="dialog" aria-modal="true">
+          <section className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black sm:p-7">
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="label">Execution panel</p>
+                <h2 className="mt-2 text-3xl font-semibold text-white">{executionItem.title}</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="chip">{executionItem.type}</span>
+                  <span className="chip">{executionItem.status}</span>
+                  <span className="chip">Updated {readableDate(executionItem.updatedAt)}</span>
+                </div>
+              </div>
+              <button className="btn-secondary" onClick={() => setExecutionItem(null)}>Close</button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
+                <h3 className="font-semibold text-white">Source</h3>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">{executionItem.content}</p>
+                <h3 className="mt-5 font-semibold text-white">Next action</h3>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">{executionItem.nextAction || "Add a next action before execution."}</p>
+              </div>
+
+              <div className="rounded-3xl border border-amber-300/20 bg-amber-300/5 p-4">
+                <h3 className="font-semibold text-white">{executionContent.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-amber-100/75">{executionContent.help}</p>
+                {executionContent.mode === "checklist" ? (
+                  <ul className="mt-4 space-y-3 text-sm text-zinc-200">
+                    {executionContent.checklist.map((step) => (
+                      <li className="flex gap-3" key={step}><span className="mt-1 h-2 w-2 rounded-full bg-amber-300" />{step}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <>
+                    <textarea className="field mt-4 min-h-56 resize-y" readOnly value={executionContent.text} />
+                    <button className="btn-primary mt-4" onClick={() => void copyText(executionContent.text, executionContent.copyLabel)}>
+                      {executionContent.buttonLabel}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <label className="label mt-5 block">
+              Execution notes
+              <span className="mt-1 block normal-case tracking-normal text-zinc-500">Save outcomes, edits, links, or what to do differently next time.</span>
+              <textarea className="field mt-2 min-h-28 resize-y" value={executionNotes} onChange={(event) => setExecutionNotes(event.target.value)} />
+            </label>
+
+            {clipboardNotice ? <p className="mt-4 text-sm text-emerald-300">{clipboardNotice}</p> : null}
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button className="btn-secondary" onClick={saveExecutionNotes}>Save notes</button>
+              <button className="btn-primary" onClick={markExecuted}>Mark executed</button>
+              <button className="btn-danger" onClick={() => requestDeleteItem(executionItem)}>Delete item</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
 
-async function createDatabaseItem(
-  draft: ItemDraft,
-  onFailure: (message: string) => void,
-): Promise<CommandItem | null> {
-  return mutateDatabase("/api/items", { method: "POST", body: JSON.stringify(draft) }, onFailure);
-}
-
-async function updateDatabaseItem(
-  id: string,
-  draft: ItemDraft,
-  onFailure: (message: string) => void,
-): Promise<CommandItem | null> {
-  return mutateDatabase(
-    `/api/items/${encodeURIComponent(id)}`,
-    { method: "PUT", body: JSON.stringify(draft) },
-    onFailure,
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-white/15 p-6 text-sm leading-6 text-zinc-500">
+      <h2 className="text-base font-semibold text-white">No matching items.</h2>
+      <p className="mt-2">Capture a raw signal, refine it into a useful format, execute or copy it, then mark it ready or executed.</p>
+      <button className="btn-primary mt-4" onClick={onCreate}>Capture raw signal</button>
+    </div>
   );
 }
 
-async function deleteDatabaseItem(id: string, onFailure: (message: string) => void): Promise<boolean> {
-  try {
-    const response = await fetch(`/api/items/${encodeURIComponent(id)}`, { method: "DELETE" });
-
-    if (!response.ok) {
-      const payload = (await response.json()) as ItemsResponse;
-      throw new Error(payload.error ?? "Database delete failed.");
-    }
-
-    return true;
-  } catch (error) {
-    onFailure(error instanceof Error ? error.message : "Database delete failed.");
-    return false;
-  }
-}
-
-async function seedDatabaseItems(onFailure: (message: string) => void): Promise<CommandItem[] | null> {
-  try {
-    const response = await fetch("/api/items/seed", { method: "POST" });
-    const payload = (await response.json()) as ItemsResponse;
-
-    if (!response.ok || !payload.items) {
-      throw new Error(payload.error ?? "Database seed failed.");
-    }
-
-    return payload.items;
-  } catch (error) {
-    onFailure(error instanceof Error ? error.message : "Database seed failed.");
-    return null;
-  }
-}
-
-async function mutateDatabase(
-  url: string,
-  init: RequestInit,
-  onFailure: (message: string) => void,
-): Promise<CommandItem | null> {
-  try {
-    const response = await fetch(url, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init.headers },
-    });
-    const payload = (await response.json()) as ItemsResponse;
-
-    if (!response.ok || !payload.item) {
-      throw new Error(payload.error ?? "Database write failed.");
-    }
-
-    return payload.item;
-  } catch (error) {
-    onFailure(error instanceof Error ? error.message : "Database write failed.");
-    return null;
-  }
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value, help }: { label: string; value: number; help: string }) {
   return (
-    <div className="surface rounded-3xl p-5">
+    <div className="surface rounded-3xl p-5" title={help}>
       <p className="label">{label}</p>
       <p className="mt-4 text-4xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-zinc-500">{help}</p>
     </div>
   );
 }
@@ -530,18 +532,21 @@ function CountPanel({ title, rows }: { title: string; rows: { label: string; cou
 
 function Select({
   label,
+  help,
   value,
   options,
   onChange,
 }: {
   label: string;
+  help: string;
   value: string;
   options: readonly string[];
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="label">
+    <label className="label" title={help}>
       {label}
+      <span className="mt-1 block normal-case tracking-normal text-zinc-500">{help}</span>
       <select className="field mt-2" value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option} value={option}>{option}</option>
@@ -557,4 +562,69 @@ function countItems<T extends "type" | "status">(
   value: CommandItem[T],
 ): number {
   return items.filter((item) => item[key] === value).length;
+}
+
+type ExecutionContent =
+  | { mode: "copy"; title: string; help: string; text: string; buttonLabel: string; copyLabel: string }
+  | { mode: "checklist"; title: string; help: string; checklist: string[] };
+
+function buildExecutionContent(item: CommandItem): ExecutionContent {
+  if (item.type === "X Post") {
+    return {
+      mode: "copy",
+      title: "Copy-ready X post",
+      help: "A polished post draft based on the saved content and next action.",
+      text: polishPost(item),
+      buttonLabel: "Copy post",
+      copyLabel: "Post",
+    };
+  }
+
+  if (item.type === "Image Prompt") {
+    return {
+      mode: "copy",
+      title: "Copy-ready image prompt",
+      help: "Paste this into your image model and iterate from there.",
+      text: `Create an image with this direction:\n\n${item.content}\n\nStyle: premium, precise, cinematic, high contrast, minimal clutter.\nMust include: ${item.nextAction || "a clear visual focal point"}.\nAvoid: noisy composition, generic stock-photo styling, unreadable UI text.`,
+      buttonLabel: "Copy prompt",
+      copyLabel: "Image prompt",
+    };
+  }
+
+  if (item.type === "Prompt" || item.type === "AI Workflow") {
+    return {
+      mode: "copy",
+      title: item.type === "Prompt" ? "Copy-ready prompt" : "Copy-ready AI workflow",
+      help: "Paste this into your AI tool as the working instruction.",
+      text: `Goal:\n${item.title}\n\nContext:\n${item.content}\n\nTask:\n${item.nextAction || "Produce the best next useful output."}\n\nOutput format:\n- Summary\n- Recommended action\n- Risks or missing information\n- Final answer ready to use`,
+      buttonLabel: "Copy to clipboard",
+      copyLabel: item.type,
+    };
+  }
+
+  return {
+    mode: "checklist",
+    title: "Execution checklist",
+    help: "A simple checklist generated from the saved fields.",
+    checklist: [
+      `Clarify the outcome: ${item.title}`,
+      `Review the signal: ${item.content || "Add content before executing."}`,
+      `Do the next action: ${item.nextAction || "Define the next action."}`,
+      `Capture what happened in execution notes.`,
+      `Mark this item Executed when complete.`,
+    ],
+  };
+}
+
+function polishPost(item: CommandItem): string {
+  const body = item.content.trim();
+  const next = item.nextAction.trim();
+
+  return [
+    body,
+    next ? `\nNext move: ${next}` : "",
+    "\nSignal. Speed. Precision.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

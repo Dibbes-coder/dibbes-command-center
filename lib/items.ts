@@ -1,5 +1,22 @@
-export const ITEM_TYPES = ["Signal", "Prompt", "Project", "Workflow", "Experiment", "Note"] as const;
-export const ITEM_STATUSES = ["Raw", "Active", "Ready to Ship", "Shipped", "Archived"] as const;
+export const ITEM_TYPES = [
+  "Raw Signal",
+  "X Post",
+  "Image Prompt",
+  "Prompt",
+  "AI Workflow",
+  "Project",
+  "Experiment",
+  "Idea",
+] as const;
+
+export const ITEM_STATUSES = [
+  "Raw",
+  "Refining",
+  "Ready to Ship",
+  "Executed",
+  "Archived",
+] as const;
+
 export const ITEM_ENERGIES = ["Low", "Medium", "High", "Critical"] as const;
 
 export type ItemType = (typeof ITEM_TYPES)[number];
@@ -15,28 +32,22 @@ export type CommandItem = {
   tags: string[];
   content: string;
   nextAction: string;
+  executionNotes: string;
   createdAt: string;
   updatedAt: string;
 };
 
-export type ItemDraft = {
-  title: string;
-  type: ItemType;
-  status: ItemStatus;
-  energy: ItemEnergy;
-  tags: string[];
-  content: string;
-  nextAction: string;
-};
+export type ItemDraft = Omit<CommandItem, "id" | "createdAt" | "updatedAt">;
 
 export const emptyDraft: ItemDraft = {
   title: "",
-  type: "Signal",
+  type: "Raw Signal",
   status: "Raw",
   energy: "Medium",
   tags: [],
   content: "",
   nextAction: "",
+  executionNotes: "",
 };
 
 export function itemToDraft(item: CommandItem): ItemDraft {
@@ -48,6 +59,7 @@ export function itemToDraft(item: CommandItem): ItemDraft {
     tags: item.tags,
     content: item.content,
     nextAction: item.nextAction,
+    executionNotes: item.executionNotes,
   };
 }
 
@@ -80,6 +92,15 @@ export function reviseItem(item: CommandItem, draft: ItemDraft): CommandItem {
   };
 }
 
+export function markItemExecuted(item: CommandItem, executionNotes: string): CommandItem {
+  return {
+    ...item,
+    status: "Executed",
+    executionNotes,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function parseTags(value: string): string[] {
   return cleanTags(value.split(","));
 }
@@ -96,26 +117,40 @@ export function readableDate(value: string): string {
   }).format(new Date(value));
 }
 
-export function draftFromUnknown(value: unknown): ItemDraft {
-  const record = isRecord(value) ? value : {};
+export function normalizeItem(value: unknown): CommandItem | null {
+  if (!isRecord(value)) return null;
+
+  const createdAt = typeof value.createdAt === "string" ? value.createdAt : new Date().toISOString();
+  const updatedAt = typeof value.updatedAt === "string" ? value.updatedAt : createdAt;
 
   return {
-    title: typeof record.title === "string" ? record.title : "",
-    type: normalizeType(record.type),
-    status: normalizeStatus(record.status),
-    energy: normalizeEnergy(record.energy),
-    tags: Array.isArray(record.tags) ? cleanTags(record.tags.map(String)) : parseTags(String(record.tags ?? "")),
-    content: typeof record.content === "string" ? record.content : "",
-    nextAction: typeof record.nextAction === "string" ? record.nextAction : "",
+    id: typeof value.id === "string" && value.id ? value.id : createId(),
+    title: cleanTitle(typeof value.title === "string" ? value.title : "Untitled signal"),
+    type: normalizeType(value.type),
+    status: normalizeStatus(value.status),
+    energy: normalizeEnergy(value.energy),
+    tags: Array.isArray(value.tags) ? cleanTags(value.tags.map(String)) : [],
+    content: typeof value.content === "string" ? value.content : "",
+    nextAction: typeof value.nextAction === "string" ? value.nextAction : "",
+    executionNotes: typeof value.executionNotes === "string" ? value.executionNotes : "",
+    createdAt,
+    updatedAt,
   };
 }
 
 export function normalizeType(value: unknown): ItemType {
-  return ITEM_TYPES.includes(value as ItemType) ? (value as ItemType) : "Signal";
+  if (ITEM_TYPES.includes(value as ItemType)) return value as ItemType;
+  if (value === "Signal") return "Raw Signal";
+  if (value === "Workflow") return "AI Workflow";
+  if (value === "Note") return "Idea";
+  return "Raw Signal";
 }
 
 export function normalizeStatus(value: unknown): ItemStatus {
-  return ITEM_STATUSES.includes(value as ItemStatus) ? (value as ItemStatus) : "Raw";
+  if (ITEM_STATUSES.includes(value as ItemStatus)) return value as ItemStatus;
+  if (value === "Active") return "Refining";
+  if (value === "Shipped") return "Executed";
+  return "Raw";
 }
 
 export function normalizeEnergy(value: unknown): ItemEnergy {

@@ -2,7 +2,7 @@
   "name": "dibbes-command-center",
   "version": "1.0.0",
   "private": true,
-  "description": "Signal. Speed. Precision. A database-backed personal AI dashboard for Vercel.",
+  "description": "Signal. Speed. Precision. A browser-only local execution dashboard for Vercel.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,13 +11,11 @@
   },
   "dependencies": {
     "next": "16.2.5",
-    "pg": "8.20.0",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@types/node": "25.6.0",
-    "@types/pg": "8.20.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.5.0",
