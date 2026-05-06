@@ -1,5 +1,5 @@
 import CommandCenter from "@/components/CommandCenter";
 
-export default function Home() {
+export default function Page() {
   return <CommandCenter />;
 }
