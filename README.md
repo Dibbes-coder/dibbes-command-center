@@ -65,7 +65,7 @@ dibbes-command-center/
 ### 1. Create the GitHub repository
 
 1. Download or unzip this project folder.
-2. Go to GitHub.
+2. Go to GitHub..
 3. Click **New repository**.
 4. Name it, for example: `dibbes-command-center`.
 5. Keep it private or public — your choice.
