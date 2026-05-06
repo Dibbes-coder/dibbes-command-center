@@ -9,8 +9,9 @@ A clean, Vercel-deployable Next.js App Router execution dashboard for capturing 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Browser-only execution flow
-- No backend, API keys, authentication, or database required
+- Browser-only local execution flow with optional OpenAI API execution
+- Server-side OpenAI API route that keeps `OPENAI_API_KEY` out of the browser
+- No authentication or database required
 - `localStorage` persistence
 - Sample data seeded on first run
 - Create, edit, execute, and delete items
@@ -25,7 +26,7 @@ A clean, Vercel-deployable Next.js App Router execution dashboard for capturing 
 - Search and filters for type, status, and tag
 - Ready to Ship, Raw Signals, Prompt Lab, and Executed views
 - JSON export and Delete all data control
-- Commented future integration point for OpenAI API features
+- OpenAI execution uses the Responses API when `OPENAI_API_KEY` is configured
 
 ## Root structure
 
@@ -33,6 +34,7 @@ A clean, Vercel-deployable Next.js App Router execution dashboard for capturing 
 app/page.tsx
 app/layout.tsx
 app/globals.css
+app/api/execute/route.ts
 components/CommandCenter.tsx
 lib/items.ts
 lib/storage.ts
@@ -56,6 +58,22 @@ npm run dev
 
 Open <http://localhost:3000>.
 
+## OpenAI API execution
+
+Local execution works without API keys. To enable the **Generate with OpenAI** button, add this to `.env.local` locally or to Vercel environment variables:
+
+```bash
+OPENAI_API_KEY="sk-..."
+```
+
+Optional model override:
+
+```bash
+OPENAI_MODEL="gpt-5.2"
+```
+
+The API key is only read by `app/api/execute/route.ts`; it is never sent to the browser. If the key is missing, the UI keeps the local copy/checklist execution flow working.
+
 ## Production build
 
 ```bash
@@ -65,4 +83,4 @@ npm start
 
 ## Vercel deployment
 
-Deploy this repository directly from GitHub on Vercel. No environment variables or external services are required for the current browser-only version.
+Deploy this repository directly from GitHub on Vercel. No environment variables are required for localStorage execution. Add `OPENAI_API_KEY` if you want OpenAI-powered execution drafts.

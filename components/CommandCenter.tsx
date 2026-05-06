@@ -23,6 +23,13 @@ import { deleteAllItems, downloadItems, loadItems, saveItems, seedSampleItems } 
 type ViewMode = "All" | "Ready to Ship" | "Raw Signals" | "Prompt Lab" | "Executed";
 type SelectAll<T extends string> = "All" | T;
 
+type OpenAIExecutionResponse = {
+  ok: boolean;
+  text?: string;
+  model?: string;
+  error?: string;
+};
+
 type Filters = {
   query: string;
   type: SelectAll<ItemType>;
@@ -56,6 +63,10 @@ export default function CommandCenter() {
   const [executionItem, setExecutionItem] = useState<CommandItem | null>(null);
   const [executionNotes, setExecutionNotes] = useState("");
   const [clipboardNotice, setClipboardNotice] = useState("");
+  const [openAIExecutionText, setOpenAIExecutionText] = useState("");
+  const [openAIExecutionModel, setOpenAIExecutionModel] = useState("");
+  const [openAIExecutionStatus, setOpenAIExecutionStatus] = useState("");
+  const [isOpenAIExecuting, setIsOpenAIExecuting] = useState(false);
 
   useEffect(() => {
     const stored = loadItems();
@@ -194,6 +205,9 @@ export default function CommandCenter() {
     setExecutionItem(item);
     setExecutionNotes(item.executionNotes);
     setClipboardNotice("");
+    setOpenAIExecutionText("");
+    setOpenAIExecutionModel("");
+    setOpenAIExecutionStatus("");
   }
 
   function saveExecutionNotes() {
@@ -223,6 +237,35 @@ export default function CommandCenter() {
       setClipboardNotice(`${label} copied to clipboard.`);
     } catch {
       setClipboardNotice("Clipboard copy failed. Select the text and copy it manually.");
+    }
+  }
+
+  async function generateOpenAIExecution() {
+    if (!executionItem) return;
+
+    setIsOpenAIExecuting(true);
+    setOpenAIExecutionStatus("Generating with OpenAI...");
+    setClipboardNotice("");
+
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: executionItem, mode: executionContent?.title ?? "execute" }),
+      });
+      const payload = (await response.json()) as OpenAIExecutionResponse;
+
+      if (!response.ok || !payload.ok || !payload.text) {
+        throw new Error(payload.error ?? "OpenAI execution failed.");
+      }
+
+      setOpenAIExecutionText(payload.text);
+      setOpenAIExecutionModel(payload.model ?? "OpenAI");
+      setOpenAIExecutionStatus("OpenAI execution ready. Review, copy, then save notes or mark executed.");
+    } catch (error) {
+      setOpenAIExecutionStatus(error instanceof Error ? error.message : "OpenAI execution failed.");
+    } finally {
+      setIsOpenAIExecuting(false);
     }
   }
 
@@ -417,7 +460,7 @@ export default function CommandCenter() {
             <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100/80">
               {/* Future OpenAI API integration point: summarize content, generate tags, improve prompts, or suggest the next action from this draft. */}
               OpenAI integration point reserved for future classify, summarize, rewrite,
-              prompt-expand, and next-action generation flows. Today, execution is fully browser-only.
+              prompt-expand, and next-action generation flows. Configure OPENAI_API_KEY to generate execution-ready drafts with OpenAI.
             </div>
           </section>
         </section>
@@ -465,6 +508,31 @@ export default function CommandCenter() {
                   </>
                 )}
               </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-sky-300/20 bg-sky-300/5 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="font-semibold text-white">OpenAI API execution</h3>
+                  <p className="mt-2 text-sm leading-6 text-sky-100/75">
+                    Generate a sharper execution draft with the server-side OpenAI Responses API. Requires OPENAI_API_KEY.
+                  </p>
+                </div>
+                <button className="btn-secondary" disabled={isOpenAIExecuting} onClick={() => void generateOpenAIExecution()}>
+                  {isOpenAIExecuting ? "Generating..." : "Generate with OpenAI"}
+                </button>
+              </div>
+              {openAIExecutionStatus ? <p className="mt-3 text-sm text-sky-100/80">{openAIExecutionStatus}</p> : null}
+              {openAIExecutionText ? (
+                <>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                    <span className="chip">Model: {openAIExecutionModel || "OpenAI"}</span>
+                    <span>Review before publishing or using externally.</span>
+                  </div>
+                  <textarea className="field mt-3 min-h-56 resize-y" value={openAIExecutionText} onChange={(event) => setOpenAIExecutionText(event.target.value)} />
+                  <button className="btn-primary mt-4" onClick={() => void copyText(openAIExecutionText, "OpenAI execution")}>Copy OpenAI output</button>
+                </>
+              ) : null}
             </div>
 
             <label className="label mt-5 block">

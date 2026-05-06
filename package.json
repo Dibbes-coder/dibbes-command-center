@@ -2,7 +2,7 @@
   "name": "dibbes-command-center",
   "version": "1.0.0",
   "private": true,
-  "description": "Signal. Speed. Precision. A browser-only local execution dashboard for Vercel.",
+  "description": "Signal. Speed. Precision. A local execution dashboard with optional OpenAI API execution for Vercel.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
