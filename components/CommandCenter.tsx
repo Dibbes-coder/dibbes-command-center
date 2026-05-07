@@ -57,6 +57,7 @@ const viewHelp: Record<ViewMode, string> = {
 export default function CommandCenter() {
   const [items, setItems] = useState<CommandItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isCreatingSignal, setIsCreatingSignal] = useState(false);
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [tagText, setTagText] = useState("");
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -71,6 +72,8 @@ export default function CommandCenter() {
   const [toastMessage, setToastMessage] = useState("");
   const lightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<HTMLElement | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const stored = loadItems();
@@ -92,15 +95,17 @@ export default function CommandCenter() {
 
   useEffect(() => {
     if (!activeItem) {
-      setDraft(emptyDraft);
-      setTagText("");
+      if (!isCreatingSignal) {
+        setDraft(emptyDraft);
+        setTagText("");
+      }
       return;
     }
 
     const nextDraft = itemToDraft(activeItem);
     setDraft(nextDraft);
     setTagText(nextDraft.tags.join(", "));
-  }, [activeItem]);
+  }, [activeItem, isCreatingSignal]);
 
   const tags = useMemo(
     () => Array.from(new Set(items.flatMap((item) => item.tags))).sort(),
@@ -163,16 +168,20 @@ export default function CommandCenter() {
 
   function createBlankItem() {
     triggerButtonLight("capture");
-    const item = makeItem({
+    setIsCreatingSignal(true);
+    setActiveId(null);
+    setDraft({
       ...emptyDraft,
-      title: "New raw signal",
-      content: "Capture the signal before it decays.",
-      nextAction: "Refine this into one clear next move.",
+      title: "",
+      content: "",
+      nextAction: "",
     });
+    setTagText("");
 
-    persist([item, ...items]);
-    setActiveId(item.id);
-    showSavedToast();
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      titleInputRef.current?.focus();
+    });
   }
 
   function saveDraft() {
@@ -183,11 +192,13 @@ export default function CommandCenter() {
       const item = makeItem(nextDraft);
       persist([item, ...items]);
       setActiveId(item.id);
+      setIsCreatingSignal(false);
       showSavedToast();
       return;
     }
 
     persist(items.map((item) => (item.id === activeItem.id ? reviseItem(item, nextDraft) : item)));
+    setIsCreatingSignal(false);
     showSavedToast();
   }
 
@@ -197,7 +208,10 @@ export default function CommandCenter() {
 
     const nextItems = items.filter((current) => current.id !== item.id);
     persist(nextItems);
-    if (activeId === item.id) setActiveId(nextItems[0]?.id ?? null);
+    if (activeId === item.id) {
+      setActiveId(nextItems[0]?.id ?? null);
+      setIsCreatingSignal(false);
+    }
     if (executionItem?.id === item.id) setExecutionItem(null);
   }
 
@@ -210,6 +224,7 @@ export default function CommandCenter() {
     deleteAllItems();
     setItems([]);
     setActiveId(null);
+    setIsCreatingSignal(false);
     setExecutionItem(null);
   }
 
@@ -217,6 +232,7 @@ export default function CommandCenter() {
     const seeded = seedSampleItems();
     setItems(seeded);
     setActiveId(seeded[0]?.id ?? null);
+    setIsCreatingSignal(false);
   }
 
   function openExecution(item: CommandItem) {
@@ -329,37 +345,19 @@ export default function CommandCenter() {
         <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
           <aside className="surface rounded-[2rem] p-4">
             <div className="grid gap-3">
-              <input
-                className="field"
-                aria-label="Search saved items"
-                placeholder="Search titles, tags, content..."
-                value={filters.query}
-                onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-              />
-              <p className="text-xs leading-5 text-zinc-500">Search looks across titles, tags, content, next actions, and execution notes.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Select
-                  label="Type"
-                  help="What kind of work this is. Execution changes by type."
-                  value={filters.type}
-                  options={["All", ...ITEM_TYPES]}
-                  onChange={(value) => setFilters({ ...filters, type: value as SelectAll<ItemType> })}
-                />
-                <Select
-                  label="Status"
-                  help="Where this item is in the capture → execute loop."
-                  value={filters.status}
-                  options={["All", ...ITEM_STATUSES]}
-                  onChange={(value) => setFilters({ ...filters, status: value as SelectAll<ItemStatus> })}
+              <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
+                <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600" htmlFor="signal-search">
+                  Find
+                </label>
+                <input
+                  id="signal-search"
+                  className="mt-2 w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-700 focus:placeholder:text-zinc-600"
+                  aria-label="Search saved items"
+                  placeholder="Search saved signals..."
+                  value={filters.query}
+                  onChange={(event) => setFilters({ ...filters, query: event.target.value })}
                 />
               </div>
-              <Select
-                label="Tag"
-                help="Use tags to group themes, clients, campaigns, or models."
-                value={filters.tag}
-                options={["All", ...tags]}
-                onChange={(value) => setFilters({ ...filters, tag: value })}
-              />
               <div className="grid grid-cols-2 gap-2">
                 {(["All", "Ready to Ship", "Raw Signals", "Prompt Lab", "Executed"] as ViewMode[]).map((view) => (
                   <button
@@ -376,6 +374,36 @@ export default function CommandCenter() {
                   </button>
                 ))}
               </div>
+              <details className="rounded-3xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-500">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
+                  Refine search
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Select
+                      label="Type"
+                      help="What kind of work this is. Execution changes by type."
+                      value={filters.type}
+                      options={["All", ...ITEM_TYPES]}
+                      onChange={(value) => setFilters({ ...filters, type: value as SelectAll<ItemType> })}
+                    />
+                    <Select
+                      label="Status"
+                      help="Where this item is in the capture → execute loop."
+                      value={filters.status}
+                      options={["All", ...ITEM_STATUSES]}
+                      onChange={(value) => setFilters({ ...filters, status: value as SelectAll<ItemStatus> })}
+                    />
+                  </div>
+                  <Select
+                    label="Tag"
+                    help="Use tags to group themes, clients, campaigns, or models."
+                    value={filters.tag}
+                    options={["All", ...tags]}
+                    onChange={(value) => setFilters({ ...filters, tag: value })}
+                  />
+                </div>
+              </details>
               <p className="text-xs leading-5 text-zinc-500">{viewHelp[filters.view]}</p>
             </div>
 
@@ -387,7 +415,7 @@ export default function CommandCenter() {
                     activeId === item.id ? "border-amber-300/70 bg-amber-300/10" : "border-white/10 bg-black/25"
                   }`}
                 >
-                  <button className="w-full text-left" onClick={() => setActiveId(item.id)}>
+                  <button className="w-full text-left" onClick={() => { setIsCreatingSignal(false); setActiveId(item.id); }}>
                     <div className="flex items-start justify-between gap-3">
                       <h2 className="font-semibold text-white">{item.title}</h2>
                       <span className="chip shrink-0">{item.energy}</span>
@@ -409,14 +437,14 @@ export default function CommandCenter() {
             </div>
           </aside>
 
-          <section className="surface rounded-[2rem] p-5 sm:p-7">
+          <section ref={editorRef} className="surface scroll-mt-4 rounded-[2rem] p-5 sm:p-7">
             <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="label">Editor</p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {activeItem ? "Refine item" : "Create item"}
+                  {activeItem ? "Refine item" : "Capture signal"}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">Edit the saved item, then use Execute when it is ready to copy or complete.</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">Add every detail here first. Nothing is stored until you press Save.</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save</button>
@@ -429,7 +457,7 @@ export default function CommandCenter() {
               <label className="label md:col-span-2">
                 Title
                 <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
-                <input className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
+                <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
               </label>
               <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
               <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
