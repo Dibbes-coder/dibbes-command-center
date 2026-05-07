@@ -78,7 +78,7 @@ export default function CommandCenter() {
   useEffect(() => {
     const stored = loadItems();
     setItems(stored);
-    setActiveId(stored[0]?.id ?? null);
+    setActiveId(null);
   }, []);
 
   useEffect(() => {
@@ -166,6 +166,13 @@ export default function CommandCenter() {
     toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 2400);
   }
 
+  function closeSignalDetail() {
+    setIsCreatingSignal(false);
+    setActiveId(null);
+    setDraft(emptyDraft);
+    setTagText("");
+  }
+
   function createBlankItem() {
     triggerButtonLight("capture");
     setIsCreatingSignal(true);
@@ -179,7 +186,6 @@ export default function CommandCenter() {
     setTagText("");
 
     requestAnimationFrame(() => {
-      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       titleInputRef.current?.focus();
     });
   }
@@ -342,7 +348,7 @@ export default function CommandCenter() {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <section className="grid gap-4">
           <aside className="surface rounded-[2rem] p-4">
             <div className="grid gap-3">
               <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
@@ -437,8 +443,10 @@ export default function CommandCenter() {
             </div>
           </aside>
 
-          <section ref={editorRef} className="surface scroll-mt-4 rounded-[2rem] p-5 sm:p-7">
-            <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
+          {(activeItem || isCreatingSignal) ? (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6" role="dialog" aria-modal="true">
+              <section ref={editorRef} className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black sm:p-7">
+                <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="label">Editor</p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
@@ -447,8 +455,9 @@ export default function CommandCenter() {
                 <p className="mt-2 text-sm leading-6 text-zinc-500">Add every detail here first. Nothing is stored until you press Save.</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save</button>
+                <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
                 <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
+                <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
                 <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
               </div>
             </div>
@@ -494,7 +503,9 @@ export default function CommandCenter() {
               OpenAI integration point reserved for future classify, summarize, rewrite,
               prompt-expand, and next-action generation flows. Configure OPENAI_API_KEY to generate execution-ready drafts with OpenAI.
             </div>
-          </section>
+              </section>
+            </div>
+          ) : null}
         </section>
       </div>
 
