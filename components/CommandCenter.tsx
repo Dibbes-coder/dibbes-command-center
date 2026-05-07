@@ -20,9 +20,6 @@ import {
 } from "@/lib/items";
 import { deleteAllItems, downloadItems, loadItems, saveItems, seedSampleItems } from "@/lib/storage";
 
-type ViewMode = "All" | "Ready to Ship" | "Raw Signals" | "Prompt Lab" | "Executed";
-type SelectAll<T extends string> = "All" | T;
-
 type OpenAIExecutionResponse = {
   ok: boolean;
   text?: string;
@@ -32,26 +29,10 @@ type OpenAIExecutionResponse = {
 
 type Filters = {
   query: string;
-  type: SelectAll<ItemType>;
-  status: SelectAll<ItemStatus>;
-  tag: string;
-  view: ViewMode;
 };
 
 const initialFilters: Filters = {
   query: "",
-  type: "All",
-  status: "All",
-  tag: "All",
-  view: "All",
-};
-
-const viewHelp: Record<ViewMode, string> = {
-  All: "Everything in your local command center.",
-  "Ready to Ship": "Items polished enough to copy, publish, or run now.",
-  "Raw Signals": "Unrefined ideas that need a next action.",
-  "Prompt Lab": "Prompts and AI workflows ready to test with a model.",
-  Executed: "Completed moves and notes from what happened.",
 };
 
 export default function CommandCenter() {
@@ -121,11 +102,6 @@ export default function CommandCenter() {
     setTagText(nextDraft.tags.join(", "));
   }, [activeItem, isCreatingSignal]);
 
-  const tags = useMemo(
-    () => Array.from(new Set(items.flatMap((item) => item.tags))).sort(),
-    [items],
-  );
-
   const visibleItems = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
 
@@ -143,16 +119,7 @@ export default function CommandCenter() {
         .join(" ")
         .toLowerCase();
 
-      if (query && !searchText.includes(query)) return false;
-      if (filters.type !== "All" && item.type !== filters.type) return false;
-      if (filters.status !== "All" && item.status !== filters.status) return false;
-      if (filters.tag !== "All" && !item.tags.includes(filters.tag)) return false;
-      if (filters.view === "Ready to Ship" && item.status !== "Ready to Ship") return false;
-      if (filters.view === "Raw Signals" && item.status !== "Raw") return false;
-      if (filters.view === "Prompt Lab" && item.type !== "Prompt" && item.type !== "AI Workflow") return false;
-      if (filters.view === "Executed" && item.status !== "Executed") return false;
-
-      return true;
+      return !query || searchText.includes(query);
     });
   }, [filters, items]);
 
@@ -216,14 +183,13 @@ export default function CommandCenter() {
     if (!activeItem) {
       const item = makeItem(nextDraft);
       persist([item, ...items]);
-      setActiveId(item.id);
-      setIsCreatingSignal(false);
+      closeSignalDetail();
       showSavedToast();
       return;
     }
 
     persist(items.map((item) => (item.id === activeItem.id ? reviseItem(item, nextDraft) : item)));
-    setIsCreatingSignal(false);
+    closeSignalDetail();
     showSavedToast();
   }
 
@@ -234,8 +200,7 @@ export default function CommandCenter() {
     const nextItems = items.filter((current) => current.id !== item.id);
     persist(nextItems);
     if (activeId === item.id) {
-      setActiveId(nextItems[0]?.id ?? null);
-      setIsCreatingSignal(false);
+      closeSignalDetail();
     }
     if (executionItem?.id === item.id) setExecutionItem(null);
   }
@@ -256,11 +221,13 @@ export default function CommandCenter() {
   function restoreSamples() {
     const seeded = seedSampleItems();
     setItems(seeded);
-    setActiveId(seeded[0]?.id ?? null);
+    setActiveId(null);
     setIsCreatingSignal(false);
   }
 
   function openExecution(item: CommandItem) {
+    setIsCreatingSignal(false);
+    setActiveId(null);
     setExecutionItem(item);
     setExecutionNotes(item.executionNotes);
     setClipboardNotice("");
@@ -286,7 +253,6 @@ export default function CommandCenter() {
     const updated = markItemExecuted(executionItem, executionNotes);
     persist(items.map((item) => (item.id === updated.id ? updated : item)));
     setExecutionItem(updated);
-    setActiveId(updated.id);
     setClipboardNotice("Marked executed.");
   }
 
@@ -330,6 +296,74 @@ export default function CommandCenter() {
 
   const executionContent = executionItem ? buildExecutionContent(executionItem) : null;
 
+  if (isSignalEditorOpen) {
+    return (
+      <main className="min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(245,158,11,0.20),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(14,165,233,0.14),transparent_25%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+          <header className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <button className="text-sm font-semibold text-zinc-500 transition hover:text-white" onClick={closeSignalDetail}>
+                ← Back to command center
+              </button>
+              <p className="label mt-6">Signal screen</p>
+              <h1 id="signal-editor-title" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                {activeItem ? "Refine item" : "Capture signal"}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+                Focus on the signal here. Save to store it, or cancel to return home without adding anything.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
+              <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
+            </div>
+          </header>
+
+          <section ref={editorRef} className="surface rounded-[2rem] p-5 sm:p-7" aria-labelledby="signal-editor-title">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="label md:col-span-2">
+                Title
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
+                <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
+              </label>
+              <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
+              <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
+              <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
+              <label className="label">
+                Tags
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
+                <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
+              </label>
+              <label className="label md:col-span-2">
+                Content
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
+                <textarea className="field mt-2 min-h-44 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
+              </label>
+              <label className="label md:col-span-2">
+                Next action
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
+                <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
+              </label>
+              <label className="label md:col-span-2">
+                Execution notes
+                <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
+                <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-white/10 pt-6">
+              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
+              <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
+              <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
+              <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(245,158,11,0.20),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(14,165,233,0.14),transparent_25%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
@@ -349,23 +383,19 @@ export default function CommandCenter() {
                 action, and keep the execution record in this browser.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button className={`btn-primary ${litButton === "capture" ? "button-light-burst" : ""}`} onClick={createBlankItem}>Capture signal</button>
-              <button className="btn-secondary" onClick={() => downloadItems(items)}>Export JSON</button>
-              <button className="btn-secondary" onClick={restoreSamples}>Seed samples</button>
-              <button className="btn-danger" onClick={requestDeleteAllData}>Delete all data</button>
+              <details className="relative">
+                <summary className="btn-secondary list-none cursor-pointer">Data</summary>
+                <div className="absolute right-0 z-10 mt-2 grid w-44 gap-2 rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl shadow-black">
+                  <button className="btn-secondary px-3 py-2 text-left" onClick={() => downloadItems(items)}>Export JSON</button>
+                  <button className="btn-secondary px-3 py-2 text-left" onClick={restoreSamples}>Seed samples</button>
+                  <button className="btn-danger px-3 py-2 text-left" onClick={requestDeleteAllData}>Delete all data</button>
+                </div>
+              </details>
             </div>
           </div>
         </header>
-
-        <section className="surface rounded-[2rem] p-5 text-sm leading-6 text-zinc-400">
-          <h2 className="text-base font-semibold text-white">Add. Execute. Store.</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <FlowStep title="Add" text="Capture a raw signal, prompt, post, project, or idea before it disappears." />
-            <FlowStep title="Execute" text="Open the execution panel to copy a local output or generate one with OpenAI." />
-            <FlowStep title="Store" text="Save execution notes, mark the item executed, and keep everything in localStorage." />
-          </div>
-        </section>
 
         <section className="grid gap-4">
           <aside className="surface rounded-[2rem] p-4">
@@ -380,56 +410,17 @@ export default function CommandCenter() {
                   aria-label="Search saved items"
                   placeholder="Search saved signals..."
                   value={filters.query}
-                  onChange={(event) => setFilters({ ...filters, query: event.target.value })}
+                  onChange={(event) => setFilters({ query: event.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(["All", "Ready to Ship", "Raw Signals", "Prompt Lab", "Executed"] as ViewMode[]).map((view) => (
-                  <button
-                    key={view}
-                    title={viewHelp[view]}
-                    className={`rounded-2xl border px-3 py-3 text-xs font-bold transition ${
-                      filters.view === view
-                        ? "border-amber-300/60 bg-amber-300/10 text-amber-100"
-                        : "border-white/10 bg-black/25 text-zinc-500 hover:border-white/25 hover:text-white"
-                    }`}
-                    onClick={() => setFilters({ ...filters, view })}
-                  >
-                    {view}
+              <div className="flex items-center justify-between px-1 text-xs text-zinc-600">
+                <span>{visibleItems.length} saved signal{visibleItems.length === 1 ? "" : "s"}</span>
+                {filters.query ? (
+                  <button className="font-semibold text-zinc-500 transition hover:text-white" onClick={() => setFilters(initialFilters)}>
+                    Clear
                   </button>
-                ))}
+                ) : null}
               </div>
-              <details className="rounded-3xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-500">
-                <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
-                  Refine search
-                </summary>
-                <div className="mt-4 grid gap-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select
-                      label="Type"
-                      help="What kind of work this is. Execution changes by type."
-                      value={filters.type}
-                      options={["All", ...ITEM_TYPES]}
-                      onChange={(value) => setFilters({ ...filters, type: value as SelectAll<ItemType> })}
-                    />
-                    <Select
-                      label="Status"
-                      help="Where this item is in the capture → execute loop."
-                      value={filters.status}
-                      options={["All", ...ITEM_STATUSES]}
-                      onChange={(value) => setFilters({ ...filters, status: value as SelectAll<ItemStatus> })}
-                    />
-                  </div>
-                  <Select
-                    label="Tag"
-                    help="Use tags to group themes, clients, campaigns, or models."
-                    value={filters.tag}
-                    options={["All", ...tags]}
-                    onChange={(value) => setFilters({ ...filters, tag: value })}
-                  />
-                </div>
-              </details>
-              <p className="text-xs leading-5 text-zinc-500">{viewHelp[filters.view]}</p>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -462,79 +453,6 @@ export default function CommandCenter() {
             </div>
           </aside>
 
-          {isSignalEditorOpen ? (
-            <div
-              className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="signal-editor-title"
-              onClick={closeSignalDetail}
-            >
-              <section
-                ref={editorRef}
-                className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black sm:p-7"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="label">Editor</p>
-                    <h2 id="signal-editor-title" className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                      {activeItem ? "Refine item" : "Capture signal"}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">Add every detail here first. Nothing is stored until you press Save.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
-                    <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
-                    <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
-                    <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  <label className="label md:col-span-2">
-                    Title
-                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
-                    <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
-                  </label>
-                  <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
-                  <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
-                  <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
-                  <label className="label">
-                    Tags
-                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
-                    <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
-                  </label>
-                  <label className="label md:col-span-2">
-                    Content
-                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
-                    <textarea className="field mt-2 min-h-36 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
-                  </label>
-                  <label className="label md:col-span-2">
-                    Next action
-                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
-                    <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
-                  </label>
-                  <label className="label md:col-span-2">
-                    Execution notes
-                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
-                    <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
-                  </label>
-                </div>
-
-                <div className="mt-6 grid gap-3 rounded-3xl border border-white/10 bg-black/35 p-4 text-sm text-zinc-400 sm:grid-cols-2">
-                  <p>Created: {activeItem ? readableDate(activeItem.createdAt) : "On save"}</p>
-                  <p>Updated: {activeItem ? readableDate(activeItem.updatedAt) : "On save"}</p>
-                </div>
-
-                <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100/80">
-                  {/* Future OpenAI API integration point: summarize content, generate tags, improve prompts, or suggest the next action from this draft. */}
-                  OpenAI integration point reserved for future classify, summarize, rewrite,
-                  prompt-expand, and next-action generation flows. Configure OPENAI_API_KEY to generate execution-ready drafts with OpenAI.
-                </div>
-              </section>
-            </div>
-          ) : null}
         </section>
       </div>
 
@@ -642,16 +560,6 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
     </div>
   );
 }
-
-function FlowStep({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-black/25 p-4">
-      <p className="text-sm font-semibold text-amber-200">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-zinc-500">{text}</p>
-    </div>
-  );
-}
-
 
 function Select({
   label,
