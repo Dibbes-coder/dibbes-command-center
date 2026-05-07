@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ITEM_ENERGIES,
   ITEM_STATUSES,
@@ -67,11 +67,22 @@ export default function CommandCenter() {
   const [openAIExecutionModel, setOpenAIExecutionModel] = useState("");
   const [openAIExecutionStatus, setOpenAIExecutionStatus] = useState("");
   const [isOpenAIExecuting, setIsOpenAIExecuting] = useState(false);
+  const [litButton, setLitButton] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState("");
+  const lightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const stored = loadItems();
     setItems(stored);
     setActiveId(stored[0]?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (lightTimeoutRef.current) clearTimeout(lightTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
   }, []);
 
   const activeItem = useMemo(
@@ -135,7 +146,23 @@ export default function CommandCenter() {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function triggerButtonLight(key: string) {
+    if (lightTimeoutRef.current) clearTimeout(lightTimeoutRef.current);
+
+    setLitButton(null);
+    requestAnimationFrame(() => setLitButton(key));
+    lightTimeoutRef.current = setTimeout(() => setLitButton(null), 700);
+  }
+
+  function showSavedToast() {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+
+    setToastMessage("✓ Signal saved");
+    toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 2400);
+  }
+
   function createBlankItem() {
+    triggerButtonLight("capture");
     const item = makeItem({
       ...emptyDraft,
       title: "New raw signal",
@@ -145,19 +172,23 @@ export default function CommandCenter() {
 
     persist([item, ...items]);
     setActiveId(item.id);
+    showSavedToast();
   }
 
   function saveDraft() {
+    triggerButtonLight("save");
     const nextDraft = { ...draft, tags: parseTags(tagText) };
 
     if (!activeItem) {
       const item = makeItem(nextDraft);
       persist([item, ...items]);
       setActiveId(item.id);
+      showSavedToast();
       return;
     }
 
     persist(items.map((item) => (item.id === activeItem.id ? reviseItem(item, nextDraft) : item)));
+    showSavedToast();
   }
 
   function requestDeleteItem(item: CommandItem) {
@@ -278,7 +309,7 @@ export default function CommandCenter() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="btn-primary" onClick={createBlankItem}>Capture signal</button>
+              <button className={`btn-primary ${litButton === "capture" ? "button-light-burst" : ""}`} onClick={createBlankItem}>Capture signal</button>
               <button className="btn-secondary" onClick={() => downloadItems(items)}>Export JSON</button>
               <button className="btn-secondary" onClick={restoreSamples}>Seed samples</button>
               <button className="btn-danger" onClick={requestDeleteAllData}>Delete all data</button>
@@ -388,7 +419,7 @@ export default function CommandCenter() {
                 <p className="mt-2 text-sm leading-6 text-zinc-500">Edit the saved item, then use Execute when it is ready to copy or complete.</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button className="btn-primary" onClick={saveDraft}>Save</button>
+                <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save</button>
                 <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
                 <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
               </div>
@@ -438,6 +469,12 @@ export default function CommandCenter() {
           </section>
         </section>
       </div>
+
+      {toastMessage ? (
+        <div className="pointer-events-none fixed right-4 top-4 z-[60] rounded-full border border-emerald-300/30 bg-emerald-300/15 px-5 py-3 text-sm font-semibold text-emerald-100 shadow-2xl shadow-emerald-950/40 backdrop-blur toast-checkmark">
+          {toastMessage}
+        </div>
+      ) : null}
 
       {executionItem && executionContent ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6" role="dialog" aria-modal="true">
