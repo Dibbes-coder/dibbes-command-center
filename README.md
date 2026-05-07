@@ -22,9 +22,9 @@ A clean, Vercel-deployable Next.js App Router execution dashboard focused on one
   - Project / Experiment / Idea checklist
 - Execution notes saved back to each item
 - `Executed` status and Mark executed flow
-- Search and filters for type, status, and tag
-- Simple saved-item views for Ready to Ship, Raw Signals, Prompt Lab, and Executed work
-- JSON export and Delete all data control
+- Minimal full-text search across titles, tags, content, actions, and execution notes
+- Dedicated signal screen for capturing source, context, tags, priority, next action, and execution notes
+- Clear JSON backup, sample restore, and delete-all controls
 - OpenAI execution uses the Responses API when `OPENAI_API_KEY` is configured
 
 ## Root structure

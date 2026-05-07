@@ -7,7 +7,7 @@ export const sampleItems: CommandItem[] = [
     id: "sample-x-post",
     title: "X post: Signal. Speed. Precision.",
     type: "X Post",
-    status: "Ready to Ship",
+    status: "Refining",
     energy: "Critical",
     tags: ["launch", "copy", "brand"],
     content:
@@ -35,7 +35,7 @@ export const sampleItems: CommandItem[] = [
     id: "sample-workflow",
     title: "AI workflow: turn notes into decision memo",
     type: "AI Workflow",
-    status: "Ready to Ship",
+    status: "Refining",
     energy: "High",
     tags: ["prompt", "summary", "strategy"],
     content:
@@ -54,7 +54,7 @@ export const sampleItems: CommandItem[] = [
     tags: ["ai", "system", "ops"],
     content:
       "A single command surface for ideas, prompts, projects, experiments, and shipping decisions.",
-    nextAction: "Define the daily review loop and decide what gets archived each Friday.",
+    nextAction: "Define the daily review loop and decide what gets reviewed each Friday.",
     executionNotes: "",
     createdAt: seededAt,
     updatedAt: seededAt,

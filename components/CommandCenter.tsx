@@ -207,7 +207,7 @@ export default function CommandCenter() {
 
   function requestDeleteAllData() {
     const confirmed = window.confirm(
-      "Delete ALL Dibbes Command Center data from this browser? This cannot be undone. Export JSON first if you need a backup.",
+      "Delete ALL saved signals from this browser? This cannot be undone. Export a JSON backup first if you need one.",
     );
     if (!confirmed) return;
 
@@ -311,7 +311,7 @@ export default function CommandCenter() {
                 {activeItem ? "Refine item" : "Capture signal"}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
-                Focus on the signal here. Save to store it, or cancel to return home without adding anything.
+                Store the signal with enough source, context, tags, priority, and next action that future-you can use it immediately.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -321,35 +321,71 @@ export default function CommandCenter() {
           </header>
 
           <section ref={editorRef} className="surface rounded-[2rem] p-5 sm:p-7" aria-labelledby="signal-editor-title">
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="label md:col-span-2">
-                Title
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
-                <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
-              </label>
-              <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
-              <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
-              <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
-              <label className="label">
-                Tags
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
-                <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Content
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
-                <textarea className="field mt-2 min-h-44 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Next action
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
-                <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Execution notes
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
-                <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
-              </label>
+            <div className="grid gap-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-300/80">1. Identify</p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="label md:col-span-2">
+                    Title
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">Name the signal so it is obvious in search later.</span>
+                    <input
+                      ref={titleInputRef}
+                      className="field mt-2"
+                      placeholder="e.g. Customer quote about onboarding friction"
+                      value={draft.title}
+                      onChange={(event) => updateDraft("title", event.target.value)}
+                    />
+                  </label>
+                  <Select label="Type" help="Choose the closest format so Execute knows what to generate." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
+                  <Select label="Status" help="Raw = captured, Refining = needs shaping, Executed = already used." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
+                  <Select label="Energy" help="How much attention or urgency this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
+                  <label className="label">
+                    Tags
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">Add searchable themes, clients, campaigns, channels, or models.</span>
+                    <input className="field mt-2" placeholder="customer, onboarding, q2" value={tagText} onChange={(event) => setTagText(event.target.value)} />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-300/80">2. Capture completely</p>
+                <label className="label mt-4 block">
+                  Full signal, source, and context
+                  <span className="mt-1 block normal-case tracking-normal text-zinc-500">Paste the quote, link, observation, prompt, note, evidence, and why it matters. This is the searchable source of truth.</span>
+                  <textarea
+                    className="field mt-2 min-h-56 resize-y"
+                    placeholder="What did you see? Where did it come from? What exact words, link, file, screenshot note, or context must be preserved? Why is it useful?"
+                    value={draft.content}
+                    onChange={(event) => updateDraft("content", event.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-300/80">3. Make it usable</p>
+                <div className="mt-4 grid gap-4">
+                  <label className="label">
+                    Next action or desired output
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">State the next concrete move, output, decision, or experiment this signal should become.</span>
+                    <textarea
+                      className="field mt-2 min-h-28 resize-y"
+                      placeholder="e.g. Turn this into a launch insight, ask customer success to verify it, draft an X post, or run a product experiment."
+                      value={draft.nextAction}
+                      onChange={(event) => updateDraft("nextAction", event.target.value)}
+                    />
+                  </label>
+                  <label className="label">
+                    Execution notes
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">Optional: record outcomes, links, edits, decisions, or what changed after using this signal.</span>
+                    <textarea
+                      className="field mt-2 min-h-28 resize-y"
+                      placeholder="What happened when you used it? What should be remembered next time?"
+                      value={draft.executionNotes}
+                      onChange={(event) => updateDraft("executionNotes", event.target.value)}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3 border-t border-white/10 pt-6">
@@ -385,14 +421,9 @@ export default function CommandCenter() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button className={`btn-primary ${litButton === "capture" ? "button-light-burst" : ""}`} onClick={createBlankItem}>Capture signal</button>
-              <details className="relative">
-                <summary className="btn-secondary list-none cursor-pointer">Data</summary>
-                <div className="absolute right-0 z-10 mt-2 grid w-44 gap-2 rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl shadow-black">
-                  <button className="btn-secondary px-3 py-2 text-left" onClick={() => downloadItems(items)}>Export JSON</button>
-                  <button className="btn-secondary px-3 py-2 text-left" onClick={restoreSamples}>Seed samples</button>
-                  <button className="btn-danger px-3 py-2 text-left" onClick={requestDeleteAllData}>Delete all data</button>
-                </div>
-              </details>
+              <button className="btn-secondary" onClick={() => downloadItems(items)}>Export backup</button>
+              <button className="btn-secondary" onClick={restoreSamples}>Load examples</button>
+              <button className="btn-danger" onClick={requestDeleteAllData}>Delete all</button>
             </div>
           </div>
         </header>
@@ -555,7 +586,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-3xl border border-dashed border-white/15 p-6 text-sm leading-6 text-zinc-500">
       <h2 className="text-base font-semibold text-white">No matching items.</h2>
-      <p className="mt-2">Capture a raw signal, refine it into a useful format, execute or copy it, then mark it ready or executed.</p>
+      <p className="mt-2">Capture a raw signal, preserve the source and context, then execute it when useful.</p>
       <button className="btn-primary mt-4" onClick={onCreate}>Capture raw signal</button>
     </div>
   );

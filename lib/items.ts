@@ -12,9 +12,7 @@ export const ITEM_TYPES = [
 export const ITEM_STATUSES = [
   "Raw",
   "Refining",
-  "Ready to Ship",
   "Executed",
-  "Archived",
 ] as const;
 
 export const ITEM_ENERGIES = ["Low", "Medium", "High", "Critical"] as const;
