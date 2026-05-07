@@ -92,6 +92,20 @@ export default function CommandCenter() {
     () => items.find((item) => item.id === activeId) ?? null,
     [activeId, items],
   );
+  const isSignalEditorOpen = Boolean(activeItem || isCreatingSignal);
+
+  useEffect(() => {
+    if (!isSignalEditorOpen) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeSignalDetail();
+      }
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isSignalEditorOpen]);
 
   useEffect(() => {
     if (!activeItem) {
@@ -164,6 +178,11 @@ export default function CommandCenter() {
 
     setToastMessage("✓ Signal saved");
     toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 2400);
+  }
+
+  function openSignalDetail(item: CommandItem) {
+    setIsCreatingSignal(false);
+    setActiveId(item.id);
   }
 
   function closeSignalDetail() {
@@ -421,7 +440,7 @@ export default function CommandCenter() {
                     activeId === item.id ? "border-amber-300/70 bg-amber-300/10" : "border-white/10 bg-black/25"
                   }`}
                 >
-                  <button className="w-full text-left" onClick={() => { setIsCreatingSignal(false); setActiveId(item.id); }}>
+                  <button className="w-full text-left" onClick={() => openSignalDetail(item)}>
                     <div className="flex items-start justify-between gap-3">
                       <h2 className="font-semibold text-white">{item.title}</h2>
                       <span className="chip shrink-0">{item.energy}</span>
@@ -443,66 +462,76 @@ export default function CommandCenter() {
             </div>
           </aside>
 
-          {(activeItem || isCreatingSignal) ? (
-            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6" role="dialog" aria-modal="true">
-              <section ref={editorRef} className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black sm:p-7">
+          {isSignalEditorOpen ? (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur sm:items-center sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="signal-editor-title"
+              onClick={closeSignalDetail}
+            >
+              <section
+                ref={editorRef}
+                className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black sm:p-7"
+                onClick={(event) => event.stopPropagation()}
+              >
                 <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="label">Editor</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                  {activeItem ? "Refine item" : "Capture signal"}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">Add every detail here first. Nothing is stored until you press Save.</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
-                <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
-                <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
-                <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
-              </div>
-            </div>
+                  <div>
+                    <p className="label">Editor</p>
+                    <h2 id="signal-editor-title" className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                      {activeItem ? "Refine item" : "Capture signal"}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-zinc-500">Add every detail here first. Nothing is stored until you press Save.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
+                    <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
+                    <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
+                    <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
+                  </div>
+                </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <label className="label md:col-span-2">
-                Title
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
-                <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
-              </label>
-              <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
-              <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
-              <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
-              <label className="label">
-                Tags
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
-                <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Content
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
-                <textarea className="field mt-2 min-h-36 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Next action
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
-                <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
-              </label>
-              <label className="label md:col-span-2">
-                Execution notes
-                <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
-                <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
-              </label>
-            </div>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <label className="label md:col-span-2">
+                    Title
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">A plain-language name you can recognize later.</span>
+                    <input ref={titleInputRef} className="field mt-2" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
+                  </label>
+                  <Select label="Type" help="Choose the closest execution format." value={draft.type} options={ITEM_TYPES} onChange={(value) => updateDraft("type", value as ItemType)} />
+                  <Select label="Status" help="Use Ready to Ship when it is ready to execute." value={draft.status} options={ITEM_STATUSES} onChange={(value) => updateDraft("status", value as ItemStatus)} />
+                  <Select label="Energy" help="How much attention this deserves." value={draft.energy} options={ITEM_ENERGIES} onChange={(value) => updateDraft("energy", value as ItemEnergy)} />
+                  <label className="label">
+                    Tags
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">Comma-separated labels like launch, ai, content.</span>
+                    <input className="field mt-2" placeholder="ai, launch, prompt" value={tagText} onChange={(event) => setTagText(event.target.value)} />
+                  </label>
+                  <label className="label md:col-span-2">
+                    Content
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">The raw material that execution will turn into copy, prompts, or a checklist.</span>
+                    <textarea className="field mt-2 min-h-36 resize-y" value={draft.content} onChange={(event) => updateDraft("content", event.target.value)} />
+                  </label>
+                  <label className="label md:col-span-2">
+                    Next action
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">The next concrete move.</span>
+                    <textarea className="field mt-2 min-h-24 resize-y" value={draft.nextAction} onChange={(event) => updateDraft("nextAction", event.target.value)} />
+                  </label>
+                  <label className="label md:col-span-2">
+                    Execution notes
+                    <span className="mt-1 block normal-case tracking-normal text-zinc-500">What happened when you used this item. Also editable in the execution panel.</span>
+                    <textarea className="field mt-2 min-h-24 resize-y" value={draft.executionNotes} onChange={(event) => updateDraft("executionNotes", event.target.value)} />
+                  </label>
+                </div>
 
-            <div className="mt-6 grid gap-3 rounded-3xl border border-white/10 bg-black/35 p-4 text-sm text-zinc-400 sm:grid-cols-2">
-              <p>Created: {activeItem ? readableDate(activeItem.createdAt) : "On save"}</p>
-              <p>Updated: {activeItem ? readableDate(activeItem.updatedAt) : "On save"}</p>
-            </div>
+                <div className="mt-6 grid gap-3 rounded-3xl border border-white/10 bg-black/35 p-4 text-sm text-zinc-400 sm:grid-cols-2">
+                  <p>Created: {activeItem ? readableDate(activeItem.createdAt) : "On save"}</p>
+                  <p>Updated: {activeItem ? readableDate(activeItem.updatedAt) : "On save"}</p>
+                </div>
 
-            <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100/80">
-              {/* Future OpenAI API integration point: summarize content, generate tags, improve prompts, or suggest the next action from this draft. */}
-              OpenAI integration point reserved for future classify, summarize, rewrite,
-              prompt-expand, and next-action generation flows. Configure OPENAI_API_KEY to generate execution-ready drafts with OpenAI.
-            </div>
+                <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100/80">
+                  {/* Future OpenAI API integration point: summarize content, generate tags, improve prompts, or suggest the next action from this draft. */}
+                  OpenAI integration point reserved for future classify, summarize, rewrite,
+                  prompt-expand, and next-action generation flows. Configure OPENAI_API_KEY to generate execution-ready drafts with OpenAI.
+                </div>
               </section>
             </div>
           ) : null}
