@@ -111,19 +111,19 @@ export default function Page() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-void text-ivory">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_5%,rgba(196,167,106,0.14),transparent_31%),radial-gradient(circle_at_82%_0%,rgba(247,240,223,0.07),transparent_26%),linear-gradient(180deg,rgba(247,240,223,0.04),transparent_38%)]" />
-      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(247,240,223,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(247,240,223,0.025)_1px,transparent_1px)] bg-[size:52px_52px] opacity-30" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(196,167,106,0.1),transparent_28%),radial-gradient(circle_at_82%_0%,rgba(247,240,223,0.045),transparent_24%),linear-gradient(180deg,rgba(247,240,223,0.026),transparent_36%)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(247,240,223,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(247,240,223,0.018)_1px,transparent_1px)] bg-[size:48px_48px] opacity-25" />
 
-      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-10">
-        <header className="py-12 text-center sm:py-16">
-          <p className="label text-gold/75">Premium refinement engine</p>
-          <h1 className="mt-5 flex flex-col items-center gap-3 text-ivory" aria-label="Dibbes Refine">
-            <span className="text-xs font-black uppercase tracking-[0.5em] text-gold/75 sm:text-sm">DIBBES</span>
-            <span className="text-6xl font-semibold uppercase tracking-[0.18em] sm:text-8xl">REFINE</span>
+      <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-6 sm:py-8">
+        <header className="py-5 text-center sm:py-10">
+          <p className="label text-gold/55">Premium refinement engine</p>
+          <h1 className="mt-3 flex flex-col items-center gap-1.5 text-ivory sm:mt-4 sm:gap-2" aria-label="Dibbes Refine">
+            <span className="text-[10px] font-black uppercase tracking-[0.46em] text-gold/70 sm:text-xs">DIBBES</span>
+            <span className="text-[3.25rem] font-semibold uppercase leading-[0.9] tracking-[0.14em] sm:text-7xl md:text-8xl">REFINE</span>
           </h1>
-          <p className="mt-5 text-2xl tracking-[-0.045em] text-ivory/82 sm:text-4xl">Input anything. Reveal the signal.</p>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-ivory/52 sm:text-base">
-            An AI refinement engine for people who refuse generic output.
+          <p className="mt-4 text-xl leading-tight tracking-[-0.045em] text-ivory/[0.84] sm:text-3xl">Input anything. Reveal the signal.</p>
+          <p className="mx-auto mt-3 max-w-xl text-[13px] leading-5 text-ivory/50 sm:text-sm">
+            A refinement engine for people who refuse generic output.
           </p>
         </header>
 
@@ -131,14 +131,14 @@ export default function Page() {
         <IntentSelector selected={intents} onChange={setIntents} />
         <BrandDNA value={brandDNA} onChange={setBrandDNA} />
 
-        <section className="surface rounded-[1.7rem] p-4 sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/65">
+        <section className="surface-subtle rounded-[1.25rem] p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex cursor-pointer items-center gap-2.5 text-xs uppercase tracking-[0.16em] text-ivory/[0.52] transition hover:text-ivory/[0.72]">
               <input
                 type="checkbox"
                 checked={generateVisual}
                 onChange={(event) => setGenerateVisual(event.target.checked)}
-                className="h-5 w-5 accent-gold"
+                className="h-4 w-4 accent-gold"
               />
               Generate visual
             </label>
@@ -146,12 +146,12 @@ export default function Page() {
               type="button"
               onClick={() => refineSignal(false)}
               disabled={isLoading}
-              className="rounded-full bg-gold px-7 py-4 text-sm font-black uppercase tracking-[0.18em] text-void transition hover:bg-[#d9bd80] disabled:cursor-not-allowed disabled:opacity-55"
+              className="instrument-button rounded-full px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-void transition disabled:cursor-not-allowed disabled:opacity-55 sm:px-7"
             >
               {isLoading ? "Refining…" : "Refine Signal"}
             </button>
           </div>
-          {error ? <p className="mt-4 rounded-[1rem] border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
+          {error ? <p className="mt-3 rounded-[0.9rem] border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
         </section>
 
         {result ? (
@@ -172,18 +172,28 @@ export default function Page() {
           </div>
         ) : null}
 
-        <section className="grid gap-3 pb-10 sm:grid-cols-3">
-          {[
-            ["Free", "Refine a few signals."],
-            ["Pro", "Daily refinement, visual generation, saved Brand DNA."],
-            ["Studio", "Client-ready brand refinement workflows."],
-          ].map(([tier, copy]) => (
-            <div key={tier} className="rounded-[1.4rem] border border-ivory/10 bg-ivory/[0.035] p-5">
-              <p className="label text-gold/70">{tier}</p>
-              <p className="mt-3 text-sm leading-6 text-ivory/58">{copy}</p>
+        <details className="surface-subtle group mb-10 rounded-[1.25rem] p-3 sm:p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+            <div>
+              <p className="label text-gold/55">Plans</p>
+              <p className="mt-1 text-xs leading-5 text-ivory/[0.42]">Refinement comes first. Plans can wait.</p>
             </div>
-          ))}
-        </section>
+            <span className="rounded-full border border-ivory/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-ivory/45 transition group-hover:border-gold/25 group-hover:text-gold/70 group-open:hidden">Open</span>
+            <span className="hidden rounded-full border border-gold/25 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-gold/70 group-open:inline">Close</span>
+          </summary>
+          <section className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Free", "Refine a few signals."],
+              ["Pro", "Daily refinement, visual generation, saved Brand DNA."],
+              ["Studio", "Client-ready brand refinement workflows."],
+            ].map(([tier, copy]) => (
+              <div key={tier} className="rounded-[1rem] border border-ivory/[0.08] bg-black/15 p-3">
+                <p className="label text-gold/60">{tier}</p>
+                <p className="mt-2 text-xs leading-5 text-ivory/[0.52]">{copy}</p>
+              </div>
+            ))}
+          </section>
+        </details>
       </div>
     </main>
   );

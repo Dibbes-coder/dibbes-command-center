@@ -14,21 +14,21 @@ const fields: Array<{ key: keyof BrandDNAType; label: string }> = [
 
 export default function BrandDNA({ value, onChange }: { value: BrandDNAType; onChange: (value: BrandDNAType) => void }) {
   return (
-    <details className="surface group rounded-[1.7rem] p-4 sm:p-5">
+    <details className="surface-subtle group rounded-[1.25rem] p-3.5 sm:p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
         <div>
           <p className="label">Brand DNA</p>
-          <p className="mt-2 max-w-2xl text-sm text-ivory/55">Compact creative constraints that keep every refinement aligned to your taste.</p>
+          <p className="mt-1 text-xs leading-5 text-ivory/45 sm:text-[13px]">Your creative constraints, remembered.</p>
         </div>
-        <span className="rounded-full border border-gold/30 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gold/80 group-open:hidden">Open</span>
-        <span className="hidden rounded-full border border-gold/30 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gold/80 group-open:inline">Close</span>
+        <span className="rounded-full border border-ivory/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-ivory/45 transition group-hover:border-gold/25 group-hover:text-gold/70 group-open:hidden">Open</span>
+        <span className="hidden rounded-full border border-gold/25 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-gold/70 group-open:inline">Close</span>
       </summary>
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="mt-4 grid gap-2.5 md:grid-cols-2">
         {fields.map((field) => (
           <label key={field.key} className={field.key === "avoid" || field.key === "coreValues" ? "md:col-span-2" : ""}>
             <span className="label">{field.label}</span>
             <textarea
-              className="field mt-2 min-h-24 resize-y text-sm leading-6"
+              className="field mt-2 min-h-20 resize-y text-sm leading-6"
               value={value[field.key]}
               onChange={(event) => onChange({ ...value, [field.key]: event.target.value })}
             />
