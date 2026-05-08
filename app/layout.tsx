@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SignalForge",
-  description: "One input. One execution. Stored.",
+  title: "SignalForge — Input anything. Reveal the signal.",
+  description: "A premium AI refinement engine for creators, founders, and brands who refuse generic output.",
 };
 
 export const viewport: Viewport = {
