@@ -1,8 +1,8 @@
 {
-  "name": "dibbes-command-center",
+  "name": "signalforge",
   "version": "1.0.0",
   "private": true,
-  "description": "Signal. Speed. Precision. A browser-only personal AI dashboard for Vercel.",
+  "description": "SignalForge is a mobile-first AI execution app for fast reusable AI actions called Signals.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
