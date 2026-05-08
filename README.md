@@ -82,7 +82,13 @@ OPENAI_MODEL="gpt-5.2"
 
 ### Vercel production, preview, and development
 
-Add the same environment variable in all three Vercel environments so OpenAI execution works consistently:
+Add the same environment variable in all three Vercel environments so OpenAI execution works consistently. If you are logged into Vercel CLI and the project is linked, you can run:
+
+```bash
+OPENAI_API_KEY="sk-..." OPENAI_MODEL="gpt-5.2" npm run vercel:env:openai
+```
+
+Or add the values manually:
 
 ```bash
 vercel env add OPENAI_API_KEY production
@@ -90,7 +96,7 @@ vercel env add OPENAI_API_KEY preview
 vercel env add OPENAI_API_KEY development
 ```
 
-If you override the model, add `OPENAI_MODEL` to the same environments as well.
+If you override the model, add `OPENAI_MODEL` to the same environments as well. Redeploy after changing Vercel environment variables.
 
 The API key is only read by `app/api/execute/route.ts`; it is never sent to the browser. If the key is missing, the UI keeps the local copy/checklist execution flow working.
 
