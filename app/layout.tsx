@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dibbes Command Center",
-  description: "Signal. Speed. Precision. A browser-only personal AI dashboard.",
+  title: "SignalForge",
+  description: "One input. One execution. Stored.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050505",
+  themeColor: "#070604",
   width: "device-width",
   initialScale: 1,
 };
