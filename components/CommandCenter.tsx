@@ -140,10 +140,10 @@ export default function CommandCenter() {
     lightTimeoutRef.current = setTimeout(() => setLitButton(null), 700);
   }
 
-  function showSavedToast() {
+  function showToast(message: string) {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
 
-    setToastMessage("✓ Signal saved");
+    setToastMessage(message);
     toastTimeoutRef.current = setTimeout(() => setToastMessage(""), 2400);
   }
 
@@ -176,21 +176,33 @@ export default function CommandCenter() {
     });
   }
 
-  function saveDraft() {
-    triggerButtonLight("save");
+  function saveDraftToStorage({ closeEditor }: { closeEditor: boolean }): CommandItem {
     const nextDraft = { ...draft, tags: parseTags(tagText) };
 
     if (!activeItem) {
       const item = makeItem(nextDraft);
       persist([item, ...items]);
-      closeSignalDetail();
-      showSavedToast();
-      return;
+      if (closeEditor) closeSignalDetail();
+      return item;
     }
 
-    persist(items.map((item) => (item.id === activeItem.id ? reviseItem(item, nextDraft) : item)));
-    closeSignalDetail();
-    showSavedToast();
+    const updated = reviseItem(activeItem, nextDraft);
+    persist(items.map((item) => (item.id === activeItem.id ? updated : item)));
+    if (closeEditor) closeSignalDetail();
+    return updated;
+  }
+
+  function saveDraft() {
+    triggerButtonLight("save");
+    saveDraftToStorage({ closeEditor: true });
+    showToast("✓ Signal saved");
+  }
+
+  function saveDraftAndExecute() {
+    triggerButtonLight("save");
+    const savedItem = saveDraftToStorage({ closeEditor: true });
+    showToast("✓ Signal saved. Execute next.");
+    openExecution(savedItem);
   }
 
   function requestDeleteItem(item: CommandItem) {
@@ -245,6 +257,33 @@ export default function CommandCenter() {
     });
     persist(items.map((item) => (item.id === updated.id ? updated : item)));
     setExecutionItem(updated);
+    setClipboardNotice("Execution notes saved to this signal.");
+  }
+
+  function storeExecutionOutcome(outcome: string, source: string) {
+    if (!executionItem) return;
+
+    const trimmedOutcome = outcome.trim();
+    if (!trimmedOutcome) {
+      setClipboardNotice("Nothing to store yet. Generate or enter an outcome first.");
+      return;
+    }
+
+    const timestamp = new Date().toLocaleString();
+    const storedOutcome = `${source} outcome — ${timestamp}
+${trimmedOutcome}`;
+    const nextNotes = executionNotes.trim()
+      ? `${executionNotes.trim()}
+
+${storedOutcome}`
+      : storedOutcome;
+    const updated = markItemExecuted(executionItem, nextNotes);
+
+    persist(items.map((item) => (item.id === updated.id ? updated : item)));
+    setExecutionItem(updated);
+    setExecutionNotes(nextNotes);
+    setClipboardNotice(`${source} outcome stored on this signal and marked executed.`);
+    showToast("✓ Execution outcome stored");
   }
 
   function markExecuted() {
@@ -253,7 +292,7 @@ export default function CommandCenter() {
     const updated = markItemExecuted(executionItem, executionNotes);
     persist(items.map((item) => (item.id === updated.id ? updated : item)));
     setExecutionItem(updated);
-    setClipboardNotice("Marked executed.");
+    setClipboardNotice("Marked executed and stored.");
   }
 
   async function copyText(value: string, label: string) {
@@ -284,9 +323,11 @@ export default function CommandCenter() {
         throw new Error(payload.error ?? "OpenAI execution failed.");
       }
 
+      const model = payload.model ?? "OpenAI";
       setOpenAIExecutionText(payload.text);
-      setOpenAIExecutionModel(payload.model ?? "OpenAI");
-      setOpenAIExecutionStatus("OpenAI execution ready. Review, copy, then save notes or mark executed.");
+      setOpenAIExecutionModel(model);
+      setOpenAIExecutionStatus("OpenAI outcome generated and stored on this signal.");
+      storeExecutionOutcome(payload.text, `OpenAI (${model})`);
     } catch (error) {
       setOpenAIExecutionStatus(error instanceof Error ? error.message : "OpenAI execution failed.");
     } finally {
@@ -311,11 +352,12 @@ export default function CommandCenter() {
                 {activeItem ? "Refine item" : "Capture signal"}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
-                Store the signal with enough source, context, tags, priority, and next action that future-you can use it immediately.
+                Step 1: store the signal. Step 2: execute it with OpenAI. Step 3: the outcome is saved back to the same signal.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
+              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraftAndExecute}>Save + Execute</button>
+              <button className="btn-secondary" onClick={saveDraft}>Save only</button>
               <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
             </div>
           </header>
@@ -389,8 +431,9 @@ export default function CommandCenter() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3 border-t border-white/10 pt-6">
-              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraft}>Save signal</button>
-              <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute</button>
+              <button className={`btn-primary ${litButton === "save" ? "button-light-burst" : ""}`} onClick={saveDraftAndExecute}>Save + Execute</button>
+              <button className="btn-secondary" onClick={saveDraft}>Save only</button>
+              <button className="btn-secondary" disabled={!activeItem} onClick={() => activeItem && openExecution(activeItem)}>Execute existing</button>
               <button className="btn-secondary" onClick={closeSignalDetail}>Cancel</button>
               <button className="btn-danger" disabled={!activeItem} onClick={() => activeItem && requestDeleteItem(activeItem)}>Delete</button>
             </div>
@@ -415,8 +458,8 @@ export default function CommandCenter() {
                 Dibbes Command Center
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                Add, execute, and store useful work. Capture signals, turn them into
-                action, and keep the execution record in this browser.
+                Capture a signal, execute it with OpenAI, and store the outcome on the same record.
+                Everything stays searchable in this browser.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -521,17 +564,23 @@ export default function CommandCenter() {
                 <h3 className="font-semibold text-white">{executionContent.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-amber-100/75">{executionContent.help}</p>
                 {executionContent.mode === "checklist" ? (
-                  <ul className="mt-4 space-y-3 text-sm text-zinc-200">
-                    {executionContent.checklist.map((step) => (
-                      <li className="flex gap-3" key={step}><span className="mt-1 h-2 w-2 rounded-full bg-amber-300" />{step}</li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="mt-4 space-y-3 text-sm text-zinc-200">
+                      {executionContent.checklist.map((step) => (
+                        <li className="flex gap-3" key={step}><span className="mt-1 h-2 w-2 rounded-full bg-amber-300" />{step}</li>
+                      ))}
+                    </ul>
+                    <button className="btn-secondary mt-4" onClick={() => storeExecutionOutcome(executionContent.checklist.join("\n"), "Local checklist")}>Store checklist outcome</button>
+                  </>
                 ) : (
                   <>
                     <textarea className="field mt-4 min-h-56 resize-y" readOnly value={executionContent.text} />
-                    <button className="btn-primary mt-4" onClick={() => void copyText(executionContent.text, executionContent.copyLabel)}>
-                      {executionContent.buttonLabel}
-                    </button>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button className="btn-primary" onClick={() => void copyText(executionContent.text, executionContent.copyLabel)}>
+                        {executionContent.buttonLabel}
+                      </button>
+                      <button className="btn-secondary" onClick={() => storeExecutionOutcome(executionContent.text, "Local")}>Store local outcome</button>
+                    </div>
                   </>
                 )}
               </div>
@@ -540,13 +589,13 @@ export default function CommandCenter() {
             <div className="mt-5 rounded-3xl border border-sky-300/20 bg-sky-300/5 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-white">OpenAI API execution</h3>
+                  <h3 className="font-semibold text-white">OpenAI execution</h3>
                   <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                    Generate a sharper execution draft with the server-side OpenAI Responses API. Requires OPENAI_API_KEY.
+                    Generate the outcome and store it on this signal automatically. Requires OPENAI_API_KEY.
                   </p>
                 </div>
-                <button className="btn-secondary" disabled={isOpenAIExecuting} onClick={() => void generateOpenAIExecution()}>
-                  {isOpenAIExecuting ? "Generating..." : "Generate with OpenAI"}
+                <button className="btn-primary" disabled={isOpenAIExecuting} onClick={() => void generateOpenAIExecution()}>
+                  {isOpenAIExecuting ? "Generating..." : "Generate + store outcome"}
                 </button>
               </div>
               {openAIExecutionStatus ? <p className="mt-3 text-sm text-sky-100/80">{openAIExecutionStatus}</p> : null}
@@ -554,25 +603,28 @@ export default function CommandCenter() {
                 <>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                     <span className="chip">Model: {openAIExecutionModel || "OpenAI"}</span>
-                    <span>Review before publishing or using externally.</span>
+                    <span>Already stored as execution notes. Edit below and store again if needed.</span>
                   </div>
                   <textarea className="field mt-3 min-h-56 resize-y" value={openAIExecutionText} onChange={(event) => setOpenAIExecutionText(event.target.value)} />
-                  <button className="btn-primary mt-4" onClick={() => void copyText(openAIExecutionText, "OpenAI execution")}>Copy OpenAI output</button>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button className="btn-primary" onClick={() => storeExecutionOutcome(openAIExecutionText, `OpenAI (${openAIExecutionModel || "OpenAI"})`)}>Store edited outcome</button>
+                    <button className="btn-secondary" onClick={() => void copyText(openAIExecutionText, "OpenAI execution")}>Copy OpenAI output</button>
+                  </div>
                 </>
               ) : null}
             </div>
 
             <label className="label mt-5 block">
-              Execution notes
-              <span className="mt-1 block normal-case tracking-normal text-zinc-500">Save outcomes, edits, links, or what to do differently next time.</span>
+              Stored outcome / notes
+              <span className="mt-1 block normal-case tracking-normal text-zinc-500">OpenAI outcomes are saved here automatically. You can edit or add manual notes any time.</span>
               <textarea className="field mt-2 min-h-28 resize-y" value={executionNotes} onChange={(event) => setExecutionNotes(event.target.value)} />
             </label>
 
             {clipboardNotice ? <p className="mt-4 text-sm text-emerald-300">{clipboardNotice}</p> : null}
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <button className="btn-secondary" onClick={saveExecutionNotes}>Save notes</button>
-              <button className="btn-primary" onClick={markExecuted}>Mark executed</button>
+              <button className="btn-secondary" onClick={saveExecutionNotes}>Save notes only</button>
+              <button className="btn-primary" onClick={markExecuted}>Store as executed</button>
               <button className="btn-danger" onClick={() => requestDeleteItem(executionItem)}>Delete item</button>
             </div>
           </section>

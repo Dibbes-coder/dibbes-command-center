@@ -15,12 +15,13 @@ A clean, Vercel-deployable Next.js App Router execution dashboard focused on one
 - `localStorage` persistence
 - Sample data seeded on first run
 - Create, edit, execute, and delete items
+- One-click Save + Execute flow that stores the signal before opening execution
 - Execution panel with type-specific actions:
   - X Post copy-ready post draft
   - Image Prompt copy-ready image prompt
   - Prompt / AI Workflow copy-ready AI instruction
   - Project / Experiment / Idea checklist
-- Execution notes saved back to each item
+- OpenAI execution outcomes automatically saved back to each item as execution notes
 - `Executed` status and Mark executed flow
 - Minimal full-text search across titles, tags, content, actions, and execution notes
 - Dedicated signal screen for capturing source, context, tags, priority, next action, and execution notes
