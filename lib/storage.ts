@@ -1,8 +1,8 @@
 import type { BrandDNA, RefinementIntent } from "./types";
 
-export const BRAND_DNA_STORAGE_KEY = "signalforge.brandDNA.v1";
-export const LAST_INPUT_STORAGE_KEY = "signalforge.lastInput.v1";
-export const LAST_OUTPUT_STORAGE_KEY = "signalforge.lastOutput.v1";
+export const BRAND_DNA_STORAGE_KEY = "dibbes-refine.brandDNA.v1";
+export const LAST_INPUT_STORAGE_KEY = "dibbes-refine.lastInput.v1";
+export const LAST_OUTPUT_STORAGE_KEY = "dibbes-refine.lastOutput.v1";
 
 export const defaultIntents: RefinementIntent[] = ["Sharper", "More human", "More premium"];
 

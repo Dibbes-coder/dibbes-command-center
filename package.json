@@ -1,8 +1,8 @@
 {
-  "name": "signalforge",
+  "name": "dibbes-refine",
   "version": "1.0.0",
   "private": true,
-  "description": "SignalForge is a mobile-first AI execution app for fast reusable AI actions called Signals.",
+  "description": "Dibbes Refine is a premium AI refinement engine for people who refuse generic output.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
