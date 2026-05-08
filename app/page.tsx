@@ -69,7 +69,7 @@ export default function Page() {
     const payloadInput = refineAgain && result ? result.refined_best : input;
 
     if (!payloadInput.trim()) {
-      setError("Paste something rough first. SignalForge needs material to refine.");
+      setError("Paste something rough first. Dibbes Refine needs material to refine.");
       return;
     }
 
@@ -117,10 +117,13 @@ export default function Page() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-10">
         <header className="py-12 text-center sm:py-16">
           <p className="label text-gold/75">Premium refinement engine</p>
-          <h1 className="mt-5 text-6xl font-semibold tracking-[-0.085em] text-ivory sm:text-8xl">SignalForge</h1>
+          <h1 className="mt-5 flex flex-col items-center gap-3 text-ivory" aria-label="Dibbes Refine">
+            <span className="text-xs font-black uppercase tracking-[0.5em] text-gold/75 sm:text-sm">DIBBES</span>
+            <span className="text-6xl font-semibold uppercase tracking-[0.18em] sm:text-8xl">REFINE</span>
+          </h1>
           <p className="mt-5 text-2xl tracking-[-0.045em] text-ivory/82 sm:text-4xl">Input anything. Reveal the signal.</p>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-ivory/52 sm:text-base">
-            An AI refinement engine for creators, founders, and brands who refuse generic output.
+            An AI refinement engine for people who refuse generic output.
           </p>
         </header>
 

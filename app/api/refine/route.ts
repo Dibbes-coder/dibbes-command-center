@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const input = String(body.input ?? "").trim();
 
     if (!input) {
-      return NextResponse.json({ error: "Paste something rough first. SignalForge needs material to refine." }, { status: 400 });
+      return NextResponse.json({ error: "Paste something rough first. Dibbes Refine needs material to refine." }, { status: 400 });
     }
 
     const payload: RefineRequest = {

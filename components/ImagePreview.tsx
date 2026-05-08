@@ -7,7 +7,7 @@ export default function ImagePreview({ imageUrl, imageError }: { imageUrl?: stri
       {imageError ? <p className="mt-3 rounded-[1.2rem] border border-gold/20 bg-gold/[0.07] p-4 text-sm text-gold/85">{imageError}</p> : null}
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="SignalForge generated visual" className="mt-4 aspect-square w-full rounded-[1.5rem] border border-ivory/10 object-cover shadow-2xl shadow-black/50" />
+        <img src={imageUrl} alt="Dibbes Refine generated visual" className="mt-4 aspect-square w-full rounded-[1.5rem] border border-ivory/10 object-cover shadow-2xl shadow-black/50" />
       ) : null}
     </section>
   );

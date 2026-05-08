@@ -1,12 +1,12 @@
-import { buildImprovementPrompt, buildRefinementPrompt, buildRefineAgainPrompt, signalForgeSystemPrompt } from "./prompts";
+import { buildImprovementPrompt, buildRefinementPrompt, buildRefineAgainPrompt, dibbesRefineSystemPrompt } from "./prompts";
 import { normalizeRefinementResult } from "./quality";
 import type { RefineRequest, RefinementResult } from "./types";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
 
-export const SIGNALFORGE_TEXT_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.1";
-export const SIGNALFORGE_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
+export const DIBBES_REFINE_TEXT_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.1";
+export const DIBBES_REFINE_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
 
 const missingKeyMessage = "Missing OPENAI_API_KEY in Vercel environment variables.";
 
@@ -45,7 +45,7 @@ export async function generateSignalImage(prompt: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: SIGNALFORGE_IMAGE_MODEL,
+      model: DIBBES_REFINE_IMAGE_MODEL,
       prompt,
       size: "1024x1024",
       quality: "high",
@@ -79,8 +79,8 @@ async function createTextResponse(prompt: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: SIGNALFORGE_TEXT_MODEL,
-      instructions: signalForgeSystemPrompt,
+      model: DIBBES_REFINE_TEXT_MODEL,
+      instructions: dibbesRefineSystemPrompt,
       input: prompt,
       text: {
         format: {
@@ -110,7 +110,7 @@ function parseRefinementJson(text: string, fallbackInput: string): RefinementRes
   const normalized = normalizeRefinementResult(parsed, fallbackInput);
 
   if (!normalized) {
-    throw new Error("SignalForge received malformed model JSON. Please try again.");
+    throw new Error("Dibbes Refine received malformed model JSON. Please try again.");
   }
 
   return normalized;
