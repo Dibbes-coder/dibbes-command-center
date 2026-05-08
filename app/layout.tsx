@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Dibbes Command Center",
-  description: "Signal. Speed. Precision. A browser-only personal AI dashboard.",
+  description: "Signal in. Output out. A fast AI command surface.",
 };
 
 export const viewport: Viewport = {

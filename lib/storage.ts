@@ -1,88 +1,73 @@
-import type { CommandItem } from "./items";
-import { normalizeItem } from "./items";
-import { sampleItems } from "./sample-data";
+import { getSignalDefinition, type SignalType } from "./signals";
 
-const STORAGE_KEY = "dibbes-command-center.items.v2";
-const LEGACY_STORAGE_KEYS = ["dibbes-command-center.items.v1", "dibbes-command-center-items"];
+export type HistoryItem = {
+  id: string;
+  signalType: SignalType;
+  signalLabel: string;
+  input: string;
+  output: string;
+  customInstruction?: string;
+  savedAt: string;
+};
 
-export function loadItems(): CommandItem[] {
-  if (!hasLocalStorage()) {
-    return cloneItems(sampleItems);
-  }
+const HISTORY_KEY = "dibbes-command-center.history.v1";
 
-  const existing = window.localStorage.getItem(STORAGE_KEY) ?? readLegacyItems();
-
-  if (!existing) {
-    const seeded = cloneItems(sampleItems);
-    saveItems(seeded);
-    return seeded;
-  }
+export function loadHistory(): HistoryItem[] {
+  if (typeof window === "undefined") return [];
 
   try {
-    const parsed = JSON.parse(existing) as unknown;
-    if (!Array.isArray(parsed)) return cloneItems(sampleItems);
-
-    const normalized = parsed.map(normalizeItem).filter((item): item is CommandItem => Boolean(item));
-    const items = normalized.length > 0 ? normalized : cloneItems(sampleItems);
-    saveItems(items);
-    return items;
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isHistoryItem) : [];
   } catch {
-    return cloneItems(sampleItems);
+    return [];
   }
 }
 
-export function saveItems(items: CommandItem[]): void {
-  if (!hasLocalStorage()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+export function saveHistory(items: HistoryItem[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
 }
 
-export function seedSampleItems(): CommandItem[] {
-  const seeded = cloneItems(sampleItems);
-  saveItems(seeded);
-  return seeded;
+export function createHistoryItem({
+  signalType,
+  input,
+  output,
+  customInstruction,
+}: {
+  signalType: SignalType;
+  input: string;
+  output: string;
+  customInstruction?: string;
+}): HistoryItem {
+  return {
+    id: createId(),
+    signalType,
+    signalLabel: getSignalDefinition(signalType).label,
+    input,
+    output,
+    customInstruction,
+    savedAt: new Date().toISOString(),
+  };
 }
 
-export function deleteAllItems(): void {
-  if (!hasLocalStorage()) return;
-  window.localStorage.removeItem(STORAGE_KEY);
-  LEGACY_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+export function formatHistoryTime(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
-export function downloadItems(items: CommandItem[]): void {
-  if (typeof document === "undefined") return;
-
-  const exportPayload = JSON.stringify(
-    {
-      source: "Dibbes Command Center",
-      exportedAt: new Date().toISOString(),
-      items,
-    },
-    null,
-    2,
-  );
-  const blob = new Blob([exportPayload], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = `dibbes-command-center-${new Date().toISOString().slice(0, 10)}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
+function isHistoryItem(value: unknown): value is HistoryItem {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const item = value as Partial<HistoryItem>;
+  return Boolean(item.id && item.signalType && item.signalLabel && typeof item.output === "string" && item.savedAt);
 }
 
-function cloneItems(items: CommandItem[]): CommandItem[] {
-  return items.map((item) => ({ ...item, tags: [...item.tags] }));
-}
-
-function hasLocalStorage(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
-function readLegacyItems(): string | null {
-  for (const key of LEGACY_STORAGE_KEYS) {
-    const value = window.localStorage.getItem(key);
-    if (value) return value;
-  }
-
-  return null;
+function createId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `history-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

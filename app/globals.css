@@ -25,87 +25,20 @@ body {
 }
 
 button,
-input,
-select,
 textarea {
   font: inherit;
 }
 
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer components {
-  .surface {
-    @apply border border-white/10 bg-white/[0.045] shadow-2xl shadow-black/40 backdrop-blur;
-  }
-
-  .field {
-    @apply w-full rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-amber-300/70 focus:ring-4 focus:ring-amber-300/10;
-  }
-
-  .label {
-    @apply text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500;
-  }
-
   .btn-primary {
     @apply rounded-full bg-amber-300 px-5 py-3 text-sm font-bold text-black transition hover:bg-amber-200 disabled:pointer-events-none disabled:opacity-40;
   }
 
   .btn-secondary {
-    @apply rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:border-white/25 hover:bg-white/10;
-  }
-
-  .btn-danger {
-    @apply rounded-full border border-red-400/30 bg-red-500/10 px-5 py-3 text-sm font-bold text-red-100 transition hover:bg-red-500/20 disabled:pointer-events-none disabled:opacity-40;
-  }
-
-  .chip {
-    @apply rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400;
-  }
-}
-
-@keyframes button-light-sweep {
-  0% {
-    opacity: 0;
-    transform: translateX(-140%) skewX(-18deg) scaleY(0.8);
-  }
-  20% {
-    opacity: 0.95;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(180%) skewX(-18deg) scaleY(1.25);
-  }
-}
-
-@keyframes toast-rise-check {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.96);
-  }
-  18% {
-    opacity: 1;
-    transform: translateY(0) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@layer components {
-  .button-light-burst {
-    @apply relative overflow-hidden shadow-[0_0_35px_rgba(252,211,77,0.35)];
-  }
-
-  .button-light-burst::after {
-    animation: button-light-sweep 680ms ease-out;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.92), rgba(252, 211, 77, 0.85), transparent);
-    content: "";
-    inset: -45% auto -45% -35%;
-    pointer-events: none;
-    position: absolute;
-    width: 42%;
-  }
-
-  .toast-checkmark {
-    animation: toast-rise-check 260ms ease-out;
+    @apply rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:border-white/25 hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40;
   }
 }
