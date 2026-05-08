@@ -1,209 +1,187 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import HistoryPanel from "@/components/HistoryPanel";
-import OutputPanel from "@/components/OutputPanel";
-import SignalCard from "@/components/SignalCard";
-import { defaultSignalType, getSignal, signals } from "@/lib/signals";
-import type { ExecuteResponse, SavedResult, SignalType } from "@/lib/types";
-
-const HISTORY_KEY = "signalforge.savedResults.v1";
+import { useEffect, useState } from "react";
+import BeforeAfter from "@/components/BeforeAfter";
+import BrandDNA from "@/components/BrandDNA";
+import ImagePreview from "@/components/ImagePreview";
+import IntentSelector from "@/components/IntentSelector";
+import OutputCards from "@/components/OutputCards";
+import RefineInput from "@/components/RefineInput";
+import {
+  BRAND_DNA_STORAGE_KEY,
+  LAST_INPUT_STORAGE_KEY,
+  LAST_OUTPUT_STORAGE_KEY,
+  defaultBrandDNA,
+  defaultIntents,
+} from "@/lib/storage";
+import type { BrandDNA as BrandDNAType, RefineResponse, RefinementIntent, RefinementResult } from "@/lib/types";
 
 export default function Page() {
-  const [selectedSignal, setSelectedSignal] = useState<SignalType>(defaultSignalType);
   const [input, setInput] = useState("");
-  const [customInstruction, setCustomInstruction] = useState("");
-  const [output, setOutput] = useState("");
-  const [history, setHistory] = useState<SavedResult[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [intents, setIntents] = useState<RefinementIntent[]>(defaultIntents);
+  const [brandDNA, setBrandDNA] = useState<BrandDNAType>(defaultBrandDNA);
+  const [generateVisual, setGenerateVisual] = useState(false);
+  const [result, setResult] = useState<RefinementResult | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [imageError, setImageError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-
-  const activeSignal = useMemo(() => getSignal(selectedSignal), [selectedSignal]);
+  const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
   useEffect(() => {
-    const savedHistory = window.localStorage.getItem(HISTORY_KEY);
-
-    if (!savedHistory) return;
-
     try {
-      const parsed = JSON.parse(savedHistory) as SavedResult[];
-      if (Array.isArray(parsed)) {
-        setHistory(parsed);
+      const savedBrandDNA = window.localStorage.getItem(BRAND_DNA_STORAGE_KEY);
+      const savedInput = window.localStorage.getItem(LAST_INPUT_STORAGE_KEY);
+      const savedOutput = window.localStorage.getItem(LAST_OUTPUT_STORAGE_KEY);
+
+      if (savedBrandDNA) {
+        setBrandDNA({ ...defaultBrandDNA, ...JSON.parse(savedBrandDNA) });
       }
+
+      if (savedInput) setInput(savedInput);
+      if (savedOutput) setResult(JSON.parse(savedOutput));
     } catch {
-      window.localStorage.removeItem(HISTORY_KEY);
+      window.localStorage.removeItem(BRAND_DNA_STORAGE_KEY);
+      window.localStorage.removeItem(LAST_OUTPUT_STORAGE_KEY);
     } finally {
-      setHistoryLoaded(true);
+      setHasLoadedStorage(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!historyLoaded) return;
+    if (!hasLoadedStorage) return;
+    window.localStorage.setItem(BRAND_DNA_STORAGE_KEY, JSON.stringify(brandDNA));
+  }, [brandDNA, hasLoadedStorage]);
 
-    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  }, [history, historyLoaded]);
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    window.localStorage.setItem(LAST_INPUT_STORAGE_KEY, input);
+  }, [input, hasLoadedStorage]);
 
-  async function executeSignal() {
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    if (result) {
+      window.localStorage.setItem(LAST_OUTPUT_STORAGE_KEY, JSON.stringify(result));
+    }
+  }, [result, hasLoadedStorage]);
+
+  async function refineSignal(refineAgain = false) {
+    const payloadInput = refineAgain && result ? result.refined_best : input;
+
+    if (!payloadInput.trim()) {
+      setError("Paste something rough first. SignalForge needs material to refine.");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
-    setCopied(false);
-    setSaved(false);
+    setImageError(undefined);
+    if (!refineAgain) setImageUrl(undefined);
 
     try {
-      const response = await fetch("/api/execute", {
+      const response = await fetch("/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          signalType: selectedSignal,
-          input,
-          customInstruction: selectedSignal === "Custom" ? customInstruction : undefined,
+          input: refineAgain && result ? result.original_input : input,
+          intents,
+          brandDNA,
+          generateVisual,
+          refineAgain,
+          previousBest: refineAgain ? result?.refined_best : undefined,
+          previousQualityBreakdown: refineAgain ? result?.quality_breakdown : undefined,
         }),
       });
-      const data = (await response.json()) as ExecuteResponse;
-      const result = data.output || data.error || "No output returned.";
 
-      setOutput(result);
-      if (!response.ok) {
-        setError(result);
+      const data = (await response.json()) as RefineResponse;
+
+      if (!response.ok || !data.result) {
+        throw new Error(data.error || "Signal refinement failed.");
       }
-    } catch {
-      const message = "Signal execution failed. Check your connection and try again.";
-      setOutput(message);
-      setError(message);
+
+      setResult(data.result);
+      setImageUrl(data.imageUrl);
+      setImageError(data.imageError);
+    } catch (refineError) {
+      setError(refineError instanceof Error ? refineError.message : "Signal refinement failed.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function copyOutput() {
-    if (!output) return;
-
-    await navigator.clipboard.writeText(output);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1400);
-  }
-
-  function saveOutput() {
-    if (!output) return;
-
-    const item: SavedResult = {
-      id: createId(),
-      signalType: selectedSignal,
-      input,
-      output,
-      createdAt: new Date().toISOString(),
-    };
-
-    setHistory((current) => [item, ...current].slice(0, 30));
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1400);
-  }
-
-  function clearOutput() {
-    setOutput("");
-    setError("");
-    setCopied(false);
-    setSaved(false);
-  }
-
-  function restoreHistory(item: SavedResult) {
-    setSelectedSignal(item.signalType as SignalType);
-    setInput(item.input);
-    setOutput(item.output);
-    setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   return (
     <main className="min-h-screen overflow-hidden bg-void text-ivory">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(196,167,106,0.18),transparent_32%),radial-gradient(circle_at_82%_0%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.055),transparent_36%)]" />
-      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(249,244,232,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,244,232,0.03)_1px,transparent_1px)] bg-[size:44px_44px] opacity-25" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_5%,rgba(196,167,106,0.14),transparent_31%),radial-gradient(circle_at_82%_0%,rgba(247,240,223,0.07),transparent_26%),linear-gradient(180deg,rgba(247,240,223,0.04),transparent_38%)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(247,240,223,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(247,240,223,0.025)_1px,transparent_1px)] bg-[size:52px_52px] opacity-30" />
 
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
-        <header className="surface rounded-[2rem] p-5 sm:p-7">
-          <p className="label text-gold/80">Premium AI command surface</p>
-          <div className="mt-5 flex flex-col gap-3">
-            <h1 className="text-5xl font-semibold tracking-[-0.075em] text-ivory sm:text-7xl">SignalForge</h1>
-            <p className="text-lg tracking-[-0.03em] text-ivory/60">One input. One execution. Stored.</p>
-          </div>
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-10">
+        <header className="py-12 text-center sm:py-16">
+          <p className="label text-gold/75">Premium refinement engine</p>
+          <h1 className="mt-5 text-6xl font-semibold tracking-[-0.085em] text-ivory sm:text-8xl">SignalForge</h1>
+          <p className="mt-5 text-2xl tracking-[-0.045em] text-ivory/82 sm:text-4xl">Input anything. Reveal the signal.</p>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-ivory/52 sm:text-base">
+            An AI refinement engine for creators, founders, and brands who refuse generic output.
+          </p>
         </header>
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {signals.map((signal) => (
-            <SignalCard
-              key={signal.type}
-              signal={signal}
-              active={selectedSignal === signal.type}
-              onSelect={() => {
-                setSelectedSignal(signal.type);
-                setError("");
-              }}
-            />
+        <RefineInput value={input} onChange={setInput} />
+        <IntentSelector selected={intents} onChange={setIntents} />
+        <BrandDNA value={brandDNA} onChange={setBrandDNA} />
+
+        <section className="surface rounded-[1.7rem] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/65">
+              <input
+                type="checkbox"
+                checked={generateVisual}
+                onChange={(event) => setGenerateVisual(event.target.checked)}
+                className="h-5 w-5 accent-gold"
+              />
+              Generate visual
+            </label>
+            <button
+              type="button"
+              onClick={() => refineSignal(false)}
+              disabled={isLoading}
+              className="rounded-full bg-gold px-7 py-4 text-sm font-black uppercase tracking-[0.18em] text-void transition hover:bg-[#d9bd80] disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {isLoading ? "Refining…" : "Refine Signal"}
+            </button>
+          </div>
+          {error ? <p className="mt-4 rounded-[1rem] border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
+        </section>
+
+        {result ? (
+          <div className="flex flex-col gap-5">
+            <BeforeAfter result={result} />
+            <OutputCards result={result} />
+            <ImagePreview imageUrl={imageUrl} imageError={imageError} />
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => refineSignal(true)}
+                disabled={isLoading}
+                className="rounded-full border border-gold/35 bg-gold/[0.08] px-6 py-3 text-sm font-bold uppercase tracking-[0.18em] text-gold transition hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                {isLoading ? "Refining…" : "Refine Again"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <section className="grid gap-3 pb-10 sm:grid-cols-3">
+          {[
+            ["Free", "Refine a few signals."],
+            ["Pro", "Daily refinement, visual generation, saved Brand DNA."],
+            ["Studio", "Client-ready brand refinement workflows."],
+          ].map(([tier, copy]) => (
+            <div key={tier} className="rounded-[1.4rem] border border-ivory/10 bg-ivory/[0.035] p-5">
+              <p className="label text-gold/70">{tier}</p>
+              <p className="mt-3 text-sm leading-6 text-ivory/58">{copy}</p>
+            </div>
           ))}
         </section>
-
-        <section className="surface rounded-[1.8rem] p-4 sm:p-5">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="label">Input</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.05em] text-ivory">{selectedSignal}</h2>
-            </div>
-            <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs font-bold text-gold">
-              Ready
-            </span>
-          </div>
-
-          <textarea
-            className="field min-h-52 resize-none text-base leading-7"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={activeSignal.placeholder}
-          />
-
-          {selectedSignal === "Custom" ? (
-            <input
-              className="field mt-3"
-              value={customInstruction}
-              onChange={(event) => setCustomInstruction(event.target.value)}
-              placeholder="Optional custom instruction: turn this into a launch memo, premium pitch, exact checklist..."
-            />
-          ) : null}
-
-          {error ? <p className="mt-3 text-sm text-red-200/80">{error}</p> : null}
-
-          <button
-            className="mt-4 w-full rounded-[1.35rem] bg-gold px-5 py-4 text-base font-black tracking-[-0.02em] text-black transition hover:bg-[#e7c983] disabled:pointer-events-none disabled:opacity-45"
-            type="button"
-            onClick={executeSignal}
-            disabled={isLoading}
-          >
-            {isLoading ? "Executing..." : "Execute Signal"}
-          </button>
-        </section>
-
-        <OutputPanel
-          output={output}
-          isLoading={isLoading}
-          onCopy={copyOutput}
-          onSave={saveOutput}
-          onClear={clearOutput}
-          copied={copied}
-          saved={saved}
-        />
-
-        <HistoryPanel items={history} onRestore={restoreHistory} onClearHistory={() => setHistory([])} />
       </div>
     </main>
   );
-}
-
-function createId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `signal-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
