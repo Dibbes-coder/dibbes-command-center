@@ -65,6 +65,16 @@ export default function Page() {
     }
   }, [result, hasLoadedStorage]);
 
+  function clearRequest() {
+    setInput("");
+    setResult(null);
+    setImageUrl(undefined);
+    setImageError(undefined);
+    setError("");
+    window.localStorage.removeItem(LAST_INPUT_STORAGE_KEY);
+    window.localStorage.removeItem(LAST_OUTPUT_STORAGE_KEY);
+  }
+
   async function refineSignal(refineAgain = false) {
     const payloadInput = refineAgain && result ? result.refined_best : input;
 
@@ -142,14 +152,24 @@ export default function Page() {
               />
               Generate visual
             </label>
-            <button
-              type="button"
-              onClick={() => refineSignal(false)}
-              disabled={isLoading}
-              className="instrument-button rounded-full px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-void transition disabled:cursor-not-allowed disabled:opacity-55 sm:px-7"
-            >
-              {isLoading ? "Refining…" : "Refine Signal"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={clearRequest}
+                disabled={isLoading}
+                className="rounded-full border border-ivory/10 bg-black/20 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-ivory/65 transition hover:border-gold/25 hover:text-gold/80 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                New request
+              </button>
+              <button
+                type="button"
+                onClick={() => refineSignal(false)}
+                disabled={isLoading}
+                className="instrument-button rounded-full px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-void transition disabled:cursor-not-allowed disabled:opacity-55 sm:px-7"
+              >
+                {isLoading ? "Refining…" : "Refine Signal"}
+              </button>
+            </div>
           </div>
           {error ? <p className="mt-3 rounded-[0.9rem] border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
         </section>
@@ -159,7 +179,15 @@ export default function Page() {
             <BeforeAfter result={result} />
             <OutputCards result={result} />
             <ImagePreview imageUrl={imageUrl} imageError={imageError} />
-            <div className="flex justify-center">
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={clearRequest}
+                disabled={isLoading}
+                className="rounded-full border border-ivory/10 bg-black/20 px-6 py-3 text-sm font-bold uppercase tracking-[0.18em] text-ivory/65 transition hover:border-gold/25 hover:text-gold/80 disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                New Request
+              </button>
               <button
                 type="button"
                 onClick={() => refineSignal(true)}
