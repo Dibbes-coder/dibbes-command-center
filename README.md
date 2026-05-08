@@ -59,10 +59,18 @@ Open <http://localhost:3000>.
 
 ## OpenAI API execution
 
-Local execution works without API keys. To enable the **Generate with OpenAI** button, add this to `.env.local` locally or to Vercel environment variables:
+Local execution works without API keys. To enable the **Generate with OpenAI** button, configure `OPENAI_API_KEY` as an environment variable. Do **not** commit a real API key to this repository; `.env*` files are ignored by Git and `.env.example` contains placeholders only.
+
+### Local development
+
+Copy the example file and replace the placeholder with your real key:
 
 ```bash
-OPENAI_API_KEY="sk-..."
+cp .env.example .env.local
+```
+
+```bash
+OPENAI_API_KEY="sk-REPLACE_WITH_YOUR_OPENAI_API_KEY"
 ```
 
 Optional model override:
@@ -70,6 +78,18 @@ Optional model override:
 ```bash
 OPENAI_MODEL="gpt-5.2"
 ```
+
+### Vercel production, preview, and development
+
+Add the same environment variable in all three Vercel environments so OpenAI execution works consistently:
+
+```bash
+vercel env add OPENAI_API_KEY production
+vercel env add OPENAI_API_KEY preview
+vercel env add OPENAI_API_KEY development
+```
+
+If you override the model, add `OPENAI_MODEL` to the same environments as well.
 
 The API key is only read by `app/api/execute/route.ts`; it is never sent to the browser. If the key is missing, the UI keeps the local copy/checklist execution flow working.
 
