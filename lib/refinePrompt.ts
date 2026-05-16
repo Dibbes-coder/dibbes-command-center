@@ -1,7 +1,7 @@
 import type { RefineRequest } from "./types";
 
 export function buildRefinePrompt(request: RefineRequest, fetchedPostText = ""): string {
-  return `Refine an X reply using the user's signal settings and requested intent.
+  return `Refine an X reply using the user's signal settings, requested intent, and hidden X conversation-ranking strategy.
 
 Direct X post link:
 ${request.xPostUrl || "(none provided)"}
@@ -32,5 +32,5 @@ User signal settings:
 - Preferred reply length: ${request.profile.preferredLength}
 - Position on X: ${request.profile.personalStance}
 
-Return five distinct options and the warning/score. Keep most reply options under 280 characters. Make every whyItWorks note specific, short, and useful. Calculate characterCount from the exact reply text.`;
+Return five distinct reply options and the quality score. Keep most reply options under 280 characters. Make every whyItWorks note specific, short, and useful. Calculate characterCount from the exact reply text. Do not include warnings or do-not-post sections.`;
 }
