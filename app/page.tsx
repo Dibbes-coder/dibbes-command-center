@@ -45,13 +45,10 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated || typeof window === "undefined") return;
 
-    const params = new URLSearchParams(window.location.search);
-    const sharedUrl = cleanSharedUrl(params.get("xUrl") ?? params.get("url") ?? params.get("text"));
-    const shouldAutoRun = params.get("auto") === "1";
-
+    const sharedUrl = extractSharedUrlFromLocation(window.location.href);
     if (!sharedUrl) return;
 
-    const autoRunKey = `${sharedUrl}:${shouldAutoRun ? "auto" : "load"}`;
+    const autoRunKey = `${sharedUrl}:auto`;
     if (autoRunKeyRef.current === autoRunKey) return;
     autoRunKeyRef.current = autoRunKey;
 
@@ -64,15 +61,13 @@ export default function Page() {
     setError("");
     window.history.replaceState(null, "", window.location.pathname);
 
-    if (shouldAutoRun) {
-      void runRefinement({
-        postContext: "",
-        xPostUrl: sharedUrl,
-        screenshotDataUrl: "",
-        screenshotName: "",
-        roughReply: "",
-      });
-    }
+    void runRefinement({
+      postContext: "",
+      xPostUrl: sharedUrl,
+      screenshotDataUrl: "",
+      screenshotName: "",
+      roughReply: "",
+    });
   }, [hydrated]);
 
   function updateHistory(items: HistoryItem[]) {
@@ -250,9 +245,34 @@ export default function Page() {
   );
 }
 
+function extractSharedUrlFromLocation(href: string): string {
+  try {
+    const currentUrl = new URL(href);
+    const params = currentUrl.searchParams;
+    const directValue = params.get("xUrl") ?? params.get("url") ?? params.get("text") ?? "";
+    const directMatch = cleanSharedUrl(directValue);
+    if (directMatch) return directMatch;
+
+    const rawQuery = href.split("?")[1] ?? "";
+    const rawMatch = rawQuery.match(/(?:xUrl|url|text)=([^&]+)/i);
+    return cleanSharedUrl(rawMatch ? rawMatch[1] : rawQuery);
+  } catch {
+    return cleanSharedUrl(href);
+  }
+}
+
 function cleanSharedUrl(value: string | null): string {
   if (!value) return "";
-  const trimmed = value.trim();
-  const match = trimmed.match(/https?:\/\/[^\s]+/i);
-  return match ? match[0] : trimmed;
+  const decoded = safeDecode(value.replace(/\+/g, " "));
+  const trimmed = decoded.trim();
+  const match = trimmed.match(/https?:\/\/[^\s&]+/i);
+  return match ? match[0] : "";
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
