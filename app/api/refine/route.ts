@@ -27,17 +27,19 @@ You optimize for:
 - conversational gravity
 - small-account leverage
 
-The user’s strongest default voice is:
+The user's strongest default signal is:
 still + sly, high signal, concise, intelligent, lightly playful, emotionally aware, and never needy.
 
 When replying to an X post:
 - Respect the context.
+- If a screenshot is provided, read it and use it as source context.
+- If a direct X link was provided but the text could not be fetched, use pasted context or screenshot instead.
 - Avoid making claims that require evidence unless the user provided it.
 - Prefer one clean insight over three average lines.
 - Make the reply feel like it came from a real person with taste.
 - Give options with different emotional temperatures.
-- If the user’s rough reply is already strong, preserve the core and improve precision.
-- If the user’s rough reply is weak, rebuild it without insulting the user.
+- If the user's rough reply is already strong, preserve the core and improve precision.
+- If the user's rough reply is weak, rebuild it without insulting the user.
 - If the post is bait, low-quality, toxic, or not worth replying to, say so in the warning.
 - Keep most replies under 280 characters unless a quote-post angle needs more room.
 
@@ -89,14 +91,23 @@ const refineSchema = {
   ],
 };
 
+const MAX_SCREENSHOT_DATA_URL_LENGTH = 3_200_000;
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Partial<RefineRequest>;
     const payload = normalizeRequest(body);
 
-    if (!payload.postContext) {
+    if (!payload.postContext && !payload.xPostUrl && !payload.screenshotDataUrl) {
       return NextResponse.json(
-        { error: "Paste the X post you want to reply to first." },
+        { error: "Paste copy, add an X link, or upload a screenshot first." },
+        { status: 400 },
+      );
+    }
+
+    if (payload.screenshotDataUrl && !isSupportedScreenshot(payload.screenshotDataUrl)) {
+      return NextResponse.json(
+        { error: "Screenshot is too large or unsupported. Use a smaller PNG, JPG, or WEBP image." },
         { status: 400 },
       );
     }
@@ -108,10 +119,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const fetchedPostText = payload.xPostUrl ? await fetchXPostText(payload.xPostUrl) : "";
+    const prompt = buildRefinePrompt(payload, fetchedPostText);
+    const input = payload.screenshotDataUrl
+      ? [
+          {
+            role: "user" as const,
+            content: [
+              { type: "input_text" as const, text: prompt },
+              { type: "input_image" as const, image_url: payload.screenshotDataUrl },
+            ],
+          },
+        ]
+      : prompt;
+
     const response = await getOpenAIClient().responses.create({
       model: DIBBES_REFINE_MODEL,
       instructions: systemInstruction,
-      input: buildRefinePrompt(payload),
+      input,
       max_output_tokens: 1800,
       text: {
         format: {
@@ -146,6 +171,8 @@ export async function POST(request: Request) {
 function normalizeRequest(body: Partial<RefineRequest>): RefineRequest {
   return {
     postContext: cleanString(body.postContext),
+    xPostUrl: normalizeXUrl(body.xPostUrl),
+    screenshotDataUrl: cleanString(body.screenshotDataUrl),
     roughReply: cleanString(body.roughReply),
     intent: intentOptions.includes(body.intent as never) ? String(body.intent) : intentOptions[0],
     voiceMode: voiceModes.includes(body.voiceMode as never) ? String(body.voiceMode) : voiceModes[0],
@@ -174,7 +201,7 @@ function normalizeResult(result: RefineResult): RefineResult {
     warmerReply: normalizeReply(result.warmerReply),
     bolderReply: normalizeReply(result.bolderReply),
     quotePostAngle: normalizeReply(result.quotePostAngle),
-    dontPostIf: cleanString(result.dontPostIf) || "Don’t post if the context has shifted, the post is bait, or the reply would pull you into low-signal drama.",
+    dontPostIf: cleanString(result.dontPostIf) || "Don't post if the context has shifted, the post is bait, or the reply would pull you into low-signal drama.",
     qualityScore: {
       score: clampScore(Number(result.qualityScore?.score ?? 75)),
       reason: cleanString(result.qualityScore?.reason) || "Clear enough to consider, but review for context before posting.",
@@ -199,4 +226,79 @@ function cleanString(value: unknown): string {
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 75;
   return Math.min(100, Math.max(1, Math.round(score)));
+}
+
+function normalizeXUrl(value: unknown): string {
+  const raw = cleanString(value);
+  if (!raw) return "";
+
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^mobile\./, "");
+    if (host !== "x.com" && host !== "twitter.com") return "";
+    if (!/\/status(es)?\/\d+/.test(url.pathname)) return "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function isSupportedScreenshot(dataUrl: string): boolean {
+  if (dataUrl.length > MAX_SCREENSHOT_DATA_URL_LENGTH) return false;
+  return /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(dataUrl);
+}
+
+async function fetchXPostText(xPostUrl: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4500);
+    const oEmbedUrl = `https://publish.twitter.com/oembed?omit_script=1&dnt=1&url=${encodeURIComponent(xPostUrl)}`;
+    const response = await fetch(oEmbedUrl, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+      next: { revalidate: 300 },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) return "";
+    const data = (await response.json()) as { html?: string; author_name?: string };
+    const text = htmlToText(data.html ?? "");
+    const author = cleanString(data.author_name);
+    return [author ? `Author: ${author}` : "", text].filter(Boolean).join("\n").slice(0, 5000);
+  } catch {
+    return "";
+  }
+}
+
+function htmlToText(html: string): string {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+\n/g, "\n")
+      .replace(/\n\s+/g, "\n")
+      .replace(/[ \t]+/g, " ")
+      .trim(),
+  );
+}
+
+function decodeHtmlEntities(value: string): string {
+  const named: Record<string, string> = {
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    quot: '"',
+    apos: "'",
+    nbsp: " ",
+  };
+
+  return value.replace(/&(#\d+|#x[\da-f]+|[a-z]+);/gi, (match, entity: string) => {
+    if (entity.startsWith("#x")) return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
+    if (entity.startsWith("#")) return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
+    return named[entity.toLowerCase()] ?? match;
+  });
 }
