@@ -5,6 +5,7 @@ export const LEGACY_PROFILE_STORAGE_KEY = "dibbes-refine.profile.v1";
 export const HISTORY_STORAGE_KEY = "dibbes-refine.history.v1";
 
 export const intentOptions: IntentOption[] = [
+  "Auto-pick best intent",
   "Add signal",
   "Disagree elegantly",
   "Be funny",
@@ -16,6 +17,7 @@ export const intentOptions: IntentOption[] = [
 ];
 
 export const voiceModes: VoiceMode[] = [
+  "Auto-pick best signal mode",
   "Dibbes default",
   "Still + sly",
   "Warm intelligence",
