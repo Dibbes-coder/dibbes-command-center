@@ -1,10 +1,19 @@
 import type { RefineRequest } from "./types";
 
-export function buildRefinePrompt(request: RefineRequest): string {
-  return `Refine an X reply using the user's profile and requested intent.
+export function buildRefinePrompt(request: RefineRequest, fetchedPostText = ""): string {
+  return `Refine an X reply using the user's signal settings and requested intent.
 
-X post / context:
-${request.postContext}
+Direct X post link:
+${request.xPostUrl || "(none provided)"}
+
+Text found from the direct X link, if available:
+${fetchedPostText || "(none found or not available)"}
+
+Pasted post / context:
+${request.postContext || "(none provided)"}
+
+Screenshot:
+${request.screenshotDataUrl ? "A screenshot was provided. Read it carefully and use it as the source of truth when visible." : "(none provided)"}
 
 User's rough reply, if any:
 ${request.roughReply || "(none provided)"}
@@ -12,16 +21,16 @@ ${request.roughReply || "(none provided)"}
 Desired intent:
 ${request.intent}
 
-Voice mode:
+Signal mode:
 ${request.voiceMode}
 
-User profile / voice memory:
+User signal settings:
 - Handle: ${request.profile.handle}
-- Core tone: ${request.profile.coreTone}
-- Things to avoid: ${request.profile.avoid}
-- Signature phrases: ${request.profile.signaturePhrases}
+- Core signal: ${request.profile.coreTone}
+- Signal breakers to avoid: ${request.profile.avoid}
+- Signature signal words: ${request.profile.signaturePhrases}
 - Preferred reply length: ${request.profile.preferredLength}
-- Personal stance: ${request.profile.personalStance}
+- Position on X: ${request.profile.personalStance}
 
 Return five distinct options and the warning/score. Keep most reply options under 280 characters. Make every whyItWorks note specific, short, and useful. Calculate characterCount from the exact reply text.`;
 }
