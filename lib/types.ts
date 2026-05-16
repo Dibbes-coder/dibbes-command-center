@@ -39,6 +39,8 @@ export type QualityScore = {
 
 export type RefineRequest = {
   postContext: string;
+  xPostUrl: string;
+  screenshotDataUrl: string;
   roughReply: string;
   intent: IntentOption | string;
   voiceMode: VoiceMode | string;
@@ -61,6 +63,8 @@ export type HistoryItem = {
   id: string;
   createdAt: string;
   postContext: string;
+  xPostUrl?: string;
+  screenshotName?: string;
   roughReply: string;
   intent: string;
   voiceMode: string;
