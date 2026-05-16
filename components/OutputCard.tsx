@@ -8,47 +8,54 @@ type OutputCardProps = {
 export default function OutputCard({ result }: OutputCardProps) {
   if (!result) {
     return (
-      <section className="surface rounded-[1.75rem] p-6 sm:p-8">
-        <p className="label text-gold/70">Output</p>
-        <div className="mt-10 rounded-[1.35rem] border border-dashed border-gold/20 bg-black/20 p-8 text-center">
-          <p className="text-lg font-medium text-ivory">Paste a post. Get the reply that makes people check your profile.</p>
-          <p className="mt-3 text-sm leading-6 text-stone-400">Your refined replies, quote angle, warning, and quality score will appear here.</p>
+      <section className="surface rounded-[1.4rem] p-6 sm:p-8">
+        <div className="flex min-h-[32rem] flex-col justify-between">
+          <div>
+            <p className="label text-gold/70">Output</p>
+            <h2 className="mt-3 max-w-md text-3xl font-semibold tracking-[-0.04em] text-ivory sm:text-4xl">
+              The reply should feel inevitable.
+            </h2>
+          </div>
+          <div className="border-t border-ivory/[0.08] pt-6">
+            <p className="text-sm leading-6 text-stone-400">
+              Paste, link, or screenshot a post. Dibbes Refine will return only replies with signal, restraint, and social intelligence.
+            </p>
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="surface rounded-[1.75rem] p-5 sm:p-8">
-      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <section className="surface rounded-[1.4rem] p-5 sm:p-7">
+      <div className="mb-5 flex items-start justify-between gap-4 border-b border-ivory/[0.08] pb-5">
         <div>
-          <p className="label text-gold/70">Refined output</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ivory">Reply options with taste.</h2>
+          <p className="label text-gold/70">Refined</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-ivory">Choose the cleanest strike.</h2>
         </div>
-        <div className="rounded-full border border-gold/20 px-4 py-2 text-sm text-gold">
-          Score {result.qualityScore.score}/100
+        <div className="shrink-0 rounded-full border border-gold/20 px-3 py-1.5 text-xs font-semibold text-gold">
+          {result.qualityScore.score}/100
         </div>
       </div>
 
-      <div className="grid gap-4">
-        <ReplyBlock title="Best Reply" reply={result.bestReply} />
-        <ReplyBlock title="Sharper Reply" reply={result.sharperReply} />
-        <ReplyBlock title="Warmer Reply" reply={result.warmerReply} />
-        <ReplyBlock title="Bolder Reply" reply={result.bolderReply} />
-        <ReplyBlock title="Quote Post Angle" reply={result.quotePostAngle} />
+      <div className="grid gap-3">
+        <ReplyBlock title="Best" reply={result.bestReply} featured />
+        <ReplyBlock title="Sharper" reply={result.sharperReply} />
+        <ReplyBlock title="Warmer" reply={result.warmerReply} />
+        <ReplyBlock title="Bolder" reply={result.bolderReply} />
+        <ReplyBlock title="Quote post" reply={result.quotePostAngle} />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-        <section className="rounded-[1.35rem] border border-amber-300/15 bg-amber-300/[0.04] p-4 sm:p-5">
-          <h3 className="text-sm font-semibold text-amber-200">Don’t Post This If…</h3>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_0.85fr]">
+        <section className="rounded-[1rem] border border-ivory/[0.08] bg-black/20 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gold/75">Do not post if</h3>
           <p className="mt-3 text-sm leading-6 text-stone-300">{result.dontPostIf}</p>
         </section>
 
-        <section className="rounded-[1.35rem] border border-gold/15 bg-black/25 p-4 sm:p-5">
-          <h3 className="text-sm font-semibold text-ivory">Quality Score</h3>
-          <p className="mt-3 text-3xl font-semibold text-gold">{result.qualityScore.score}</p>
+        <section className="rounded-[1rem] border border-ivory/[0.08] bg-black/20 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gold/75">Score logic</h3>
           <p className="mt-3 text-sm leading-6 text-stone-300">{result.qualityScore.reason}</p>
-          <p className="mt-3 text-sm leading-6 text-stone-400">Tip: {result.qualityScore.improvementTip}</p>
+          <p className="mt-3 text-sm leading-6 text-stone-500">{result.qualityScore.improvementTip}</p>
         </section>
       </div>
     </section>
