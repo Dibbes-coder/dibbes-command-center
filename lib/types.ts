@@ -1,4 +1,5 @@
 export type IntentOption =
+  | "Auto-pick best intent"
   | "Add signal"
   | "Disagree elegantly"
   | "Be funny"
@@ -9,6 +10,7 @@ export type IntentOption =
   | "Make them curious";
 
 export type VoiceMode =
+  | "Auto-pick best signal mode"
   | "Dibbes default"
   | "Still + sly"
   | "Warm intelligence"
