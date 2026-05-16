@@ -93,6 +93,11 @@ const refineSchema = {
 
 const MAX_SCREENSHOT_DATA_URL_LENGTH = 3_200_000;
 
+type OpenAIRefineResponse = {
+  output_text?: string;
+  error?: unknown;
+};
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Partial<RefineRequest>;
@@ -124,16 +129,16 @@ export async function POST(request: Request) {
     const input = payload.screenshotDataUrl
       ? [
           {
-            role: "user" as const,
+            role: "user",
             content: [
-              { type: "input_text" as const, text: prompt },
-              { type: "input_image" as const, image_url: payload.screenshotDataUrl },
+              { type: "input_text", text: prompt },
+              { type: "input_image", image_url: payload.screenshotDataUrl },
             ],
           },
         ]
       : prompt;
 
-    const response = await getOpenAIClient().responses.create({
+    const response = (await getOpenAIClient().responses.create({
       model: DIBBES_REFINE_MODEL,
       instructions: systemInstruction,
       input,
@@ -146,7 +151,7 @@ export async function POST(request: Request) {
           schema: refineSchema,
         },
       },
-    });
+    } as never)) as OpenAIRefineResponse;
 
     if (response.error) {
       throw new Error("Model response failed.");
@@ -250,16 +255,16 @@ function isSupportedScreenshot(dataUrl: string): boolean {
 }
 
 async function fetchXPostText(xPostUrl: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4500);
     const oEmbedUrl = `https://publish.twitter.com/oembed?omit_script=1&dnt=1&url=${encodeURIComponent(xPostUrl)}`;
     const response = await fetch(oEmbedUrl, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
       next: { revalidate: 300 },
     });
-    clearTimeout(timeout);
 
     if (!response.ok) return "";
     const data = (await response.json()) as { html?: string; author_name?: string };
@@ -268,6 +273,8 @@ async function fetchXPostText(xPostUrl: string): Promise<string> {
     return [author ? `Author: ${author}` : "", text].filter(Boolean).join("\n").slice(0, 5000);
   } catch {
     return "";
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -297,8 +304,12 @@ function decodeHtmlEntities(value: string): string {
   };
 
   return value.replace(/&(#\d+|#x[\da-f]+|[a-z]+);/gi, (match, entity: string) => {
-    if (entity.startsWith("#x")) return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
-    if (entity.startsWith("#")) return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
+    if (entity.startsWith("#x")) return safeCodePoint(Number.parseInt(entity.slice(2), 16), match);
+    if (entity.startsWith("#")) return safeCodePoint(Number.parseInt(entity.slice(1), 10), match);
     return named[entity.toLowerCase()] ?? match;
   });
+}
+
+function safeCodePoint(codePoint: number, fallback: string): string {
+  return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : fallback;
 }
