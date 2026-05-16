@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import HistoryList from "@/components/HistoryList";
 import OutputCard from "@/components/OutputCard";
 import RefineForm from "@/components/RefineForm";
-import VoiceSettings from "@/components/VoiceSettings";
+import SignalSettings from "@/components/SignalSettings";
 import { defaultProfile, loadHistory, loadProfile, saveHistory, saveProfile, voiceModes, intentOptions } from "@/lib/storage";
 import type { HistoryItem, IntentOption, RefineApiResponse, RefineResult, VoiceMode, VoiceProfile } from "@/lib/types";
 
 export default function Page() {
   const [postContext, setPostContext] = useState("");
+  const [xPostUrl, setXPostUrl] = useState("");
+  const [screenshotDataUrl, setScreenshotDataUrl] = useState("");
+  const [screenshotName, setScreenshotName] = useState("");
   const [roughReply, setRoughReply] = useState("");
   const [intent, setIntent] = useState<IntentOption>(intentOptions[0]);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>(voiceModes[0]);
@@ -37,8 +40,8 @@ export default function Page() {
   }
 
   async function handleSubmit() {
-    if (!postContext.trim()) {
-      setError("Paste the X post you want to reply to first.");
+    if (!postContext.trim() && !xPostUrl.trim() && !screenshotDataUrl) {
+      setError("Paste copy, add an X link, or upload a screenshot first.");
       return;
     }
 
@@ -49,7 +52,7 @@ export default function Page() {
       const response = await fetch("/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postContext, roughReply, intent, voiceMode, profile }),
+        body: JSON.stringify({ postContext, xPostUrl, screenshotDataUrl, roughReply, intent, voiceMode, profile }),
       });
       const data = (await response.json()) as RefineApiResponse;
 
@@ -64,6 +67,8 @@ export default function Page() {
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           postContext,
+          xPostUrl,
+          screenshotName,
           roughReply,
           intent,
           voiceMode,
@@ -80,6 +85,9 @@ export default function Page() {
 
   function openHistory(item: HistoryItem) {
     setPostContext(item.postContext);
+    setXPostUrl(item.xPostUrl ?? "");
+    setScreenshotDataUrl("");
+    setScreenshotName(item.screenshotName ?? "");
     setRoughReply(item.roughReply);
     setIntent(item.intent as IntentOption);
     setVoiceMode(item.voiceMode as VoiceMode);
@@ -97,13 +105,13 @@ export default function Page() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <header className="pb-4 pt-8 sm:pb-8 sm:pt-12">
           <div className="inline-flex rounded-full border border-gold/20 bg-gold/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-gold/90">
-            Personal reply sharpener
+            Personal X reply sharpener
           </div>
           <h1 className="mt-6 text-5xl font-semibold tracking-[-0.06em] text-ivory sm:text-7xl lg:text-8xl">
             Dibbes Refine
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-400 sm:text-xl">
-            Turn any X post into a reply worth noticing.
+            Paste copy, add a direct X link, or upload a screenshot. Get the reply that makes people check your signal.
           </p>
         </header>
 
@@ -111,18 +119,26 @@ export default function Page() {
           <div className="grid gap-6">
             <RefineForm
               postContext={postContext}
+              xPostUrl={xPostUrl}
+              screenshotDataUrl={screenshotDataUrl}
+              screenshotName={screenshotName}
               roughReply={roughReply}
               intent={intent}
               voiceMode={voiceMode}
               isLoading={isLoading}
               error={error}
               onPostContextChange={setPostContext}
+              onXPostUrlChange={setXPostUrl}
+              onScreenshotChange={(dataUrl, fileName) => {
+                setScreenshotDataUrl(dataUrl);
+                setScreenshotName(fileName);
+              }}
               onRoughReplyChange={setRoughReply}
               onIntentChange={setIntent}
               onVoiceModeChange={setVoiceMode}
               onSubmit={handleSubmit}
             />
-            <VoiceSettings profile={profile} onChange={setProfile} />
+            <SignalSettings profile={profile} onChange={setProfile} />
             <HistoryList history={history} onOpen={openHistory} onClear={() => updateHistory([])} />
           </div>
 
