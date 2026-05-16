@@ -53,7 +53,6 @@ export type RefineResult = {
   warmerReply: ReplyVariant;
   bolderReply: ReplyVariant;
   quotePostAngle: ReplyVariant;
-  dontPostIf: string;
   qualityScore: QualityScore;
 };
 
