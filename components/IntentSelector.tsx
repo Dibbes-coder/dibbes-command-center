@@ -32,7 +32,7 @@ export default function IntentSelector({
       </label>
 
       <label className="block">
-        <span className="label">Voice mode</span>
+        <span className="label">Signal mode</span>
         <select
           value={voiceMode}
           onChange={(event) => onVoiceModeChange(event.target.value as VoiceMode)}
