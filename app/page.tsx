@@ -39,6 +39,41 @@ export default function Page() {
     saveHistory(nextHistory);
   }
 
+  function clearCurrentSignals() {
+    setResult(null);
+    setError("");
+  }
+
+  function handlePostContextChange(value: string) {
+    clearCurrentSignals();
+    setPostContext(value);
+    if (value.trim()) {
+      setXPostUrl("");
+      setScreenshotDataUrl("");
+      setScreenshotName("");
+    }
+  }
+
+  function handleXPostUrlChange(value: string) {
+    clearCurrentSignals();
+    setXPostUrl(value);
+    if (value.trim()) {
+      setPostContext("");
+      setScreenshotDataUrl("");
+      setScreenshotName("");
+    }
+  }
+
+  function handleScreenshotChange(dataUrl: string, fileName: string) {
+    clearCurrentSignals();
+    setScreenshotDataUrl(dataUrl);
+    setScreenshotName(fileName);
+    if (dataUrl) {
+      setPostContext("");
+      setXPostUrl("");
+    }
+  }
+
   async function handleSubmit() {
     if (!postContext.trim() && !xPostUrl.trim() && !screenshotDataUrl) {
       setError("Paste copy, add an X link, or upload a screenshot first.");
@@ -92,6 +127,7 @@ export default function Page() {
     setIntent(item.intent as IntentOption);
     setVoiceMode(item.voiceMode as VoiceMode);
     setResult(item.result);
+    setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -105,13 +141,13 @@ export default function Page() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <header className="pb-4 pt-8 sm:pb-8 sm:pt-12">
           <div className="inline-flex rounded-full border border-gold/20 bg-gold/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-gold/90">
-            Personal X reply sharpener
+            Hyper-intelligent X reply refinery
           </div>
           <h1 className="mt-6 text-5xl font-semibold tracking-[-0.06em] text-ivory sm:text-7xl lg:text-8xl">
             Dibbes Refine
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-400 sm:text-xl">
-            Paste copy, add a direct X link, or upload a screenshot. Get the reply that makes people check your signal.
+            One post in. Five sharper ways to enter the conversation.
           </p>
         </header>
 
@@ -127,12 +163,9 @@ export default function Page() {
               voiceMode={voiceMode}
               isLoading={isLoading}
               error={error}
-              onPostContextChange={setPostContext}
-              onXPostUrlChange={setXPostUrl}
-              onScreenshotChange={(dataUrl, fileName) => {
-                setScreenshotDataUrl(dataUrl);
-                setScreenshotName(fileName);
-              }}
+              onPostContextChange={handlePostContextChange}
+              onXPostUrlChange={handleXPostUrlChange}
+              onScreenshotChange={handleScreenshotChange}
               onRoughReplyChange={setRoughReply}
               onIntentChange={setIntent}
               onVoiceModeChange={setVoiceMode}
