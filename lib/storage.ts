@@ -1,6 +1,7 @@
 import type { HistoryItem, IntentOption, VoiceMode, VoiceProfile } from "./types";
 
-export const PROFILE_STORAGE_KEY = "dibbes-refine.profile.v1";
+export const PROFILE_STORAGE_KEY = "dibbes-refine.signal-profile.v2";
+export const LEGACY_PROFILE_STORAGE_KEY = "dibbes-refine.profile.v1";
 export const HISTORY_STORAGE_KEY = "dibbes-refine.history.v1";
 
 export const intentOptions: IntentOption[] = [
@@ -39,7 +40,9 @@ export function loadProfile(): VoiceProfile {
   if (typeof window === "undefined") return defaultProfile;
 
   try {
-    const stored = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    const stored =
+      window.localStorage.getItem(PROFILE_STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_PROFILE_STORAGE_KEY);
     if (!stored) return defaultProfile;
     const parsed = JSON.parse(stored) as Partial<VoiceProfile>;
     return { ...defaultProfile, ...parsed };
