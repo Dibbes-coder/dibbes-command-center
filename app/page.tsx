@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import HistoryList from "@/components/HistoryList";
 import OutputCard from "@/components/OutputCard";
 import RefineForm from "@/components/RefineForm";
 import SignalSettings from "@/components/SignalSettings";
 import { defaultProfile, loadHistory, loadProfile, saveHistory, saveProfile, voiceModes, intentOptions } from "@/lib/storage";
 import type { HistoryItem, IntentOption, RefineApiResponse, RefineResult, VoiceMode, VoiceProfile } from "@/lib/types";
+
+type RefineOverrides = {
+  postContext?: string;
+  xPostUrl?: string;
+  screenshotDataUrl?: string;
+  screenshotName?: string;
+  roughReply?: string;
+};
 
 export default function Page() {
   const [postContext, setPostContext] = useState("");
@@ -22,6 +30,7 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const autoRunKeyRef = useRef("");
 
   useEffect(() => {
     setProfile(loadProfile());
@@ -33,10 +42,51 @@ export default function Page() {
     if (hydrated) saveProfile(profile);
   }, [hydrated, profile]);
 
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const sharedUrl = cleanSharedUrl(params.get("xUrl") ?? params.get("url") ?? params.get("text"));
+    const shouldAutoRun = params.get("auto") === "1";
+
+    if (!sharedUrl) return;
+
+    const autoRunKey = `${sharedUrl}:${shouldAutoRun ? "auto" : "load"}`;
+    if (autoRunKeyRef.current === autoRunKey) return;
+    autoRunKeyRef.current = autoRunKey;
+
+    setPostContext("");
+    setXPostUrl(sharedUrl);
+    setScreenshotDataUrl("");
+    setScreenshotName("");
+    setRoughReply("");
+    setResult(null);
+    setError("");
+    window.history.replaceState(null, "", window.location.pathname);
+
+    if (shouldAutoRun) {
+      void runRefinement({
+        postContext: "",
+        xPostUrl: sharedUrl,
+        screenshotDataUrl: "",
+        screenshotName: "",
+        roughReply: "",
+      });
+    }
+  }, [hydrated]);
+
   function updateHistory(items: HistoryItem[]) {
     const nextHistory = items.slice(0, 5);
     setHistory(nextHistory);
     saveHistory(nextHistory);
+  }
+
+  function archiveResult(item: HistoryItem) {
+    setHistory((currentHistory) => {
+      const nextHistory = [item, ...currentHistory].slice(0, 5);
+      saveHistory(nextHistory);
+      return nextHistory;
+    });
   }
 
   function clearCurrentSignals() {
@@ -74,20 +124,35 @@ export default function Page() {
     }
   }
 
-  async function handleSubmit() {
-    if (!postContext.trim() && !xPostUrl.trim() && !screenshotDataUrl) {
+  async function runRefinement(overrides: RefineOverrides = {}) {
+    const activePostContext = overrides.postContext ?? postContext;
+    const activeXPostUrl = overrides.xPostUrl ?? xPostUrl;
+    const activeScreenshotDataUrl = overrides.screenshotDataUrl ?? screenshotDataUrl;
+    const activeScreenshotName = overrides.screenshotName ?? screenshotName;
+    const activeRoughReply = overrides.roughReply ?? roughReply;
+
+    if (!activePostContext.trim() && !activeXPostUrl.trim() && !activeScreenshotDataUrl) {
       setError("Paste copy, add an X link, or upload a screenshot first.");
       return;
     }
 
     setIsLoading(true);
     setError("");
+    setResult(null);
 
     try {
       const response = await fetch("/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postContext, xPostUrl, screenshotDataUrl, roughReply, intent, voiceMode, profile }),
+        body: JSON.stringify({
+          postContext: activePostContext,
+          xPostUrl: activeXPostUrl,
+          screenshotDataUrl: activeScreenshotDataUrl,
+          roughReply: activeRoughReply,
+          intent,
+          voiceMode,
+          profile,
+        }),
       });
       const data = (await response.json()) as RefineApiResponse;
 
@@ -97,25 +162,26 @@ export default function Page() {
 
       const refinedResult = data as RefineResult;
       setResult(refinedResult);
-      updateHistory([
-        {
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          postContext,
-          xPostUrl,
-          screenshotName,
-          roughReply,
-          intent,
-          voiceMode,
-          result: refinedResult,
-        },
-        ...history,
-      ]);
+      archiveResult({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        postContext: activePostContext,
+        xPostUrl: activeXPostUrl,
+        screenshotName: activeScreenshotName,
+        roughReply: activeRoughReply,
+        intent,
+        voiceMode,
+        result: refinedResult,
+      });
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Something went quiet in the wrong way. Try again.");
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleSubmit() {
+    void runRefinement();
   }
 
   function openHistory(item: HistoryItem) {
@@ -182,4 +248,11 @@ export default function Page() {
       </div>
     </main>
   );
+}
+
+function cleanSharedUrl(value: string | null): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const match = trimmed.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : trimmed;
 }
