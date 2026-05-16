@@ -45,8 +45,15 @@ export default function RefineForm({
   onSubmit,
 }: RefineFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const clearedFieldsRef = useRef(new Set<string>());
   const [screenshotError, setScreenshotError] = useState("");
   const hasAnyContext = Boolean(postContext.trim() || xPostUrl.trim() || screenshotDataUrl);
+
+  function clearOnFirstTouch(fieldKey: string, value: string, clear: () => void) {
+    if (!value || clearedFieldsRef.current.has(fieldKey)) return;
+    clearedFieldsRef.current.add(fieldKey);
+    clear();
+  }
 
   async function handleScreenshotUpload(file: File | undefined) {
     setScreenshotError("");
@@ -82,48 +89,49 @@ export default function RefineForm({
   }
 
   return (
-    <section className="surface rounded-[1.75rem] p-5 sm:p-8">
-      <div className="mb-6">
-        <p className="label text-gold/70">Input</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ivory">Paste, link, or screenshot the post.</h2>
-        <p className="mt-2 text-sm leading-6 text-stone-400">
-          Use any one source — pasted copy, direct X link, or screenshot. Add your rough reply if you already have a spark.
+    <section className="surface rounded-[1.4rem] p-5 sm:p-7">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <p className="label text-gold/70">Input</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-ivory">Drop the signal.</h2>
+        </div>
+        <p className="hidden max-w-[15rem] text-right text-xs leading-5 text-stone-500 sm:block">
+          Tap a filled field once to clear it for pasting.
         </p>
       </div>
 
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         <label className="block">
-          <span className="label">Direct X post link</span>
+          <span className="label">X link</span>
           <input
             value={xPostUrl}
+            onFocus={() => clearOnFirstTouch("xPostUrl", xPostUrl, () => onXPostUrlChange(""))}
             onChange={(event) => onXPostUrlChange(event.target.value)}
             placeholder="https://x.com/user/status/123…"
             className="field mt-2 text-sm"
             inputMode="url"
           />
-          <p className="mt-2 text-xs leading-5 text-stone-500">
-            Public links are read server-side when possible. Protected or blocked posts still need pasted copy or a screenshot.
-          </p>
         </label>
 
         <label className="block">
-          <span className="label">Paste copy / context</span>
+          <span className="label">Post copy / context</span>
           <textarea
             value={postContext}
+            onFocus={() => clearOnFirstTouch("postContext", postContext, () => onPostContextChange(""))}
             onChange={(event) => onPostContextChange(event.target.value)}
-            placeholder="Paste the X post text, thread context, or what the screenshot says…"
-            rows={6}
+            placeholder="Paste the post, thread context, or screenshot text…"
+            rows={5}
             className="field mt-2 resize-none leading-7"
           />
         </label>
 
-        <div className="rounded-[1.15rem] border border-gold/[0.14] bg-black/25 p-4">
+        <div className="rounded-[1rem] border border-ivory/[0.08] bg-ivory/[0.025] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="label">Screenshot upload</p>
-              <p className="mt-2 text-sm leading-6 text-stone-400">Upload a screenshot when the copy or link is not enough.</p>
+              <p className="label">Screenshot</p>
+              <p className="mt-2 text-sm leading-6 text-stone-500">Use when the link or copy is not enough.</p>
             </div>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-gold/25 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-gold transition hover:border-gold/50 hover:bg-gold/[0.08]">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-gold/20 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-gold transition hover:border-gold/45 hover:bg-gold/[0.07]">
               Upload
               <input
                 ref={fileInputRef}
@@ -138,10 +146,10 @@ export default function RefineForm({
           {screenshotError ? <p className="mt-3 text-sm text-red-100">{screenshotError}</p> : null}
 
           {screenshotDataUrl ? (
-            <div className="mt-4 overflow-hidden rounded-[1rem] border border-gold/[0.14] bg-[#050505]">
+            <div className="mt-4 overflow-hidden rounded-[0.9rem] border border-ivory/[0.08] bg-[#050505]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={screenshotDataUrl} alt="Uploaded X post screenshot preview" className="max-h-64 w-full object-contain" />
-              <div className="flex items-center justify-between gap-3 border-t border-gold/[0.12] px-3 py-2 text-xs text-stone-400">
+              <img src={screenshotDataUrl} alt="Uploaded X post screenshot preview" className="max-h-56 w-full object-contain" />
+              <div className="flex items-center justify-between gap-3 border-t border-ivory/[0.08] px-3 py-2 text-xs text-stone-500">
                 <span className="truncate">{screenshotName || "Screenshot ready"}</span>
                 <button type="button" onClick={clearScreenshot} className="font-semibold text-gold hover:text-ivory">
                   Remove
@@ -152,12 +160,13 @@ export default function RefineForm({
         </div>
 
         <label className="block">
-          <span className="label">My rough reply</span>
+          <span className="label">Rough reply</span>
           <textarea
             value={roughReply}
+            onFocus={() => clearOnFirstTouch("roughReply", roughReply, () => onRoughReplyChange(""))}
             onChange={(event) => onRoughReplyChange(event.target.value)}
             placeholder="Optional: paste your rough reply…"
-            rows={4}
+            rows={3}
             className="field mt-2 resize-none leading-7"
           />
         </label>
@@ -170,14 +179,14 @@ export default function RefineForm({
         />
 
         {error ? (
-          <p className="rounded-[1rem] border border-red-300/20 bg-red-400/10 p-4 text-sm leading-6 text-red-100">{error}</p>
+          <p className="rounded-[0.95rem] border border-red-300/20 bg-red-400/10 p-4 text-sm leading-6 text-red-100">{error}</p>
         ) : null}
 
         <button
           type="button"
           disabled={isLoading || !hasAnyContext}
           onClick={onSubmit}
-          className="instrument-button rounded-full px-6 py-4 text-sm font-black uppercase tracking-[0.22em] text-[#120f08] transition disabled:cursor-not-allowed disabled:opacity-50"
+          className="instrument-button mt-1 rounded-full px-6 py-4 text-sm font-black uppercase tracking-[0.22em] text-[#120f08] transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? "Sharpening signal…" : "Refine Reply"}
         </button>
