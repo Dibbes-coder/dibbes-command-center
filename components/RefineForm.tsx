@@ -45,13 +45,11 @@ export default function RefineForm({
   onSubmit,
 }: RefineFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const clearedFieldsRef = useRef(new Set<string>());
   const [screenshotError, setScreenshotError] = useState("");
   const hasAnyContext = Boolean(postContext.trim() || xPostUrl.trim() || screenshotDataUrl);
 
-  function clearOnFirstTouch(fieldKey: string, value: string, clear: () => void) {
-    if (!value || clearedFieldsRef.current.has(fieldKey)) return;
-    clearedFieldsRef.current.add(fieldKey);
+  function clearForPaste(value: string, clear: () => void) {
+    if (!value.trim()) return;
     clear();
   }
 
@@ -96,7 +94,7 @@ export default function RefineForm({
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-ivory">Drop the signal.</h2>
         </div>
         <p className="hidden max-w-[15rem] text-right text-xs leading-5 text-stone-500 sm:block">
-          Tap a filled field once to clear it for pasting.
+          Tap a filled field to clear it for pasting.
         </p>
       </div>
 
@@ -105,7 +103,9 @@ export default function RefineForm({
           <span className="label">X link</span>
           <input
             value={xPostUrl}
-            onFocus={() => clearOnFirstTouch("xPostUrl", xPostUrl, () => onXPostUrlChange(""))}
+            onPointerDown={() => clearForPaste(xPostUrl, () => onXPostUrlChange(""))}
+            onClick={() => clearForPaste(xPostUrl, () => onXPostUrlChange(""))}
+            onFocus={() => clearForPaste(xPostUrl, () => onXPostUrlChange(""))}
             onChange={(event) => onXPostUrlChange(event.target.value)}
             placeholder="https://x.com/user/status/123…"
             className="field mt-2 text-sm"
@@ -117,7 +117,9 @@ export default function RefineForm({
           <span className="label">Post copy / context</span>
           <textarea
             value={postContext}
-            onFocus={() => clearOnFirstTouch("postContext", postContext, () => onPostContextChange(""))}
+            onPointerDown={() => clearForPaste(postContext, () => onPostContextChange(""))}
+            onClick={() => clearForPaste(postContext, () => onPostContextChange(""))}
+            onFocus={() => clearForPaste(postContext, () => onPostContextChange(""))}
             onChange={(event) => onPostContextChange(event.target.value)}
             placeholder="Paste the post, thread context, or screenshot text…"
             rows={5}
@@ -163,7 +165,9 @@ export default function RefineForm({
           <span className="label">Rough reply</span>
           <textarea
             value={roughReply}
-            onFocus={() => clearOnFirstTouch("roughReply", roughReply, () => onRoughReplyChange(""))}
+            onPointerDown={() => clearForPaste(roughReply, () => onRoughReplyChange(""))}
+            onClick={() => clearForPaste(roughReply, () => onRoughReplyChange(""))}
+            onFocus={() => clearForPaste(roughReply, () => onRoughReplyChange(""))}
             onChange={(event) => onRoughReplyChange(event.target.value)}
             placeholder="Optional: paste your rough reply…"
             rows={3}
