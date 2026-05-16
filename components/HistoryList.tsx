@@ -43,11 +43,20 @@ export default function HistoryList({ history, onOpen, onClear }: HistoryListPro
                 <span className="text-xs text-stone-500">{new Date(item.createdAt).toLocaleDateString()}</span>
               </div>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-ivory">{item.result.bestReply.text}</p>
-              <p className="mt-2 line-clamp-1 text-xs text-stone-500">Context: {item.postContext}</p>
+              <p className="mt-2 line-clamp-1 text-xs text-stone-500">
+                Source: {getSourceLabel(item)}
+              </p>
             </button>
           ))}
         </div>
       )}
     </section>
   );
+}
+
+function getSourceLabel(item: HistoryItem): string {
+  if (item.xPostUrl) return item.xPostUrl;
+  if (item.screenshotName) return `Screenshot: ${item.screenshotName}`;
+  if (item.postContext) return item.postContext;
+  return "Signal context";
 }
