@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const title = "Dibbes Refine — Input anything. Reveal the signal.";
-const description = "A premium AI refinement engine for people who refuse generic output.";
+const title = "Dibbes Refine — X replies worth noticing";
+const description = "Paste an X post and sharpen your reply into something human, premium, and worth checking a profile for.";
 
 export const metadata: Metadata = {
   title,
@@ -15,14 +15,14 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title,
     description,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070604",
+  themeColor: "#050505",
   width: "device-width",
   initialScale: 1,
 };

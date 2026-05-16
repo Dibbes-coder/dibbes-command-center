@@ -5,12 +5,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        void: "#070604",
-        ivory: "#f7f0df",
-        gold: "#c4a76a",
+        void: "#050505",
+        card: "#101010",
+        ivory: "#F5F0E6",
+        gold: "#D6B56D",
       },
       boxShadow: {
-        glow: "0 0 70px rgba(196, 167, 106, 0.16)",
+        glow: "0 0 70px rgba(214, 181, 109, 0.16)",
       },
     },
   },
