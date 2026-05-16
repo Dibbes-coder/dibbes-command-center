@@ -45,6 +45,26 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated || typeof window === "undefined") return;
 
+    function syncArchiveFromStorage() {
+      setHistory(loadHistory());
+    }
+
+    window.addEventListener("focus", syncArchiveFromStorage);
+    window.addEventListener("pageshow", syncArchiveFromStorage);
+    window.addEventListener("storage", syncArchiveFromStorage);
+    document.addEventListener("visibilitychange", syncArchiveFromStorage);
+
+    return () => {
+      window.removeEventListener("focus", syncArchiveFromStorage);
+      window.removeEventListener("pageshow", syncArchiveFromStorage);
+      window.removeEventListener("storage", syncArchiveFromStorage);
+      document.removeEventListener("visibilitychange", syncArchiveFromStorage);
+    };
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+
     const sharedUrl = extractSharedUrlFromLocation(window.location.href);
     if (!sharedUrl) return;
 
