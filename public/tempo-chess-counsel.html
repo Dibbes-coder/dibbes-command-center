@@ -6,51 +6,371 @@
 <title>Tempo Chess Counsel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
-:root{--bg:#080705;--panel:#17110a;--line:#3b2a14;--gold:#efb547;--gold2:#ffd579;--light:#e8d8b7;--dark:#a7774e;--text:#fff3dc;--muted:#b9a98d;--bad:#ff8f82;--ok:#a6e8ae}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:radial-gradient(circle at 50% -8%,rgba(239,181,71,.22),transparent 33%),linear-gradient(#070604,#120e09 45%,#070604);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Segoe UI,sans-serif}.app{max-width:700px;margin:auto;padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 24px)}.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.title{font-size:25px;font-weight:900;letter-spacing:-.04em}.sub{font-size:11px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;margin-top:4px}.pill{border:1px solid rgba(239,181,71,.45);background:rgba(239,181,71,.12);color:var(--gold2);border-radius:999px;padding:8px 10px;font-size:12px;font-weight:800}.card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:22px;overflow:hidden;margin:0 0 14px;box-shadow:0 18px 70px rgba(0,0,0,.45)}#board{width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden;touch-action:manipulation}.sq{position:relative;display:grid;place-items:center;user-select:none;font-size:clamp(32px,10.8vw,62px);line-height:1;text-shadow:0 5px 10px rgba(0,0,0,.45)}.light{background:var(--light)}.dark{background:var(--dark)}.sq:after{content:attr(data-c);position:absolute;left:5px;bottom:3px;font-size:10px;font-weight:900;color:rgba(0,0,0,.35);text-shadow:none}.dark:after{color:rgba(255,255,255,.42)}.w{color:#fff2dc;filter:drop-shadow(0 6px 7px rgba(0,0,0,.55))}.b{color:#16110c;text-shadow:0 1px 1px rgba(255,255,255,.23),0 6px 10px rgba(0,0,0,.42)}.sel{outline:4px solid var(--gold2);outline-offset:-4px}.hint{box-shadow:inset 0 0 0 5px rgba(166,232,174,.9)}.panel{padding:14px}.label{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.4;letter-spacing:.17em;text-transform:uppercase}button,select,input,textarea{font:inherit}button,select{min-height:46px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.055);color:var(--text);padding:11px 13px;font-weight:800}button.active,button.primary{border-color:rgba(239,181,71,.86);background:linear-gradient(135deg,rgba(239,181,71,.96),rgba(255,213,121,.92));color:#1c1206}.grid{display:grid;gap:9px}.two{grid-template-columns:1fr 1fr}.pieces{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.pieceBtn{font-size:29px;padding:4px 0}.pieceBtn.active{border-color:var(--gold);background:rgba(239,181,71,.18);color:var(--gold2)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.chip{border:1px solid var(--line);background:rgba(0,0,0,.16);border-radius:14px;padding:10px 12px;color:var(--muted);font-size:13px}.chip input{accent-color:var(--gold)}textarea{width:100%;min-height:58px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.25);color:var(--text);padding:10px;font-size:12px}.analyze{width:100%;min-height:64px;border-radius:20px;font-size:22px;box-shadow:0 14px 40px rgba(239,181,71,.23)}.status{padding:10px 12px;color:var(--muted);font-size:13px;line-height:1.35}.status strong{color:var(--gold2)}.best{padding:16px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(239,181,71,.15),rgba(255,255,255,.04))}.best small{display:block;color:var(--gold2);font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:900}.bestMove{font-size:54px;line-height:.95;font-weight:950;letter-spacing:-.07em;margin-top:4px}.meta,.explain{color:var(--muted);line-height:1.45;font-size:14px}.explain{padding:14px}.explain b{color:var(--text)}table{width:100%;border-collapse:collapse;min-width:520px}th,td{border-bottom:1px solid rgba(255,255,255,.08);padding:9px;text-align:left;vertical-align:top;font-size:12px}th{position:sticky;top:0;background:#18110a;color:var(--gold2);font-size:10px;letter-spacing:.13em;text-transform:uppercase}.moves{max-height:380px;overflow:auto}.san{font-size:17px;font-weight:900}.small{color:var(--muted)}.tag{display:inline-block;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:2px 6px;margin:1px;color:var(--muted);font-size:10px}.tag.hot{background:var(--gold);color:#171007;border:0;font-weight:900}.err{color:var(--bad)}@media(max-width:360px){.pieceBtn{font-size:24px}.bestMove{font-size:44px}}
+:root{
+  --bg:#f4f4f1;
+  --card:#ffffff;
+  --line:#e7e7e1;
+  --text:#121212;
+  --muted:#6c6c68;
+  --primary:#111111;
+  --accent:#1677ff;
+  --light:#ebe0c5;
+  --dark:#ad825c;
+  --good:#eaf4ff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Segoe UI,sans-serif}
+body{padding:0}
+.app{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 22px)}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.kicker{font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+h1{font-size:32px;line-height:1;letter-spacing:-.04em;margin:0 0 4px;font-weight:850}
+.sub{font-size:14px;color:var(--muted);margin:0}
+.badge{padding:8px 12px;border-radius:999px;background:#eef5ee;color:#2f6b35;font-weight:700;font-size:12px;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden;margin-bottom:14px}
+.boardWrap{padding:12px}
+#board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;border:1px solid rgba(0,0,0,.08)}
+.sq{position:relative;display:grid;place-items:center;font-size:clamp(28px,9.6vw,56px);line-height:1;user-select:none}
+.light{background:var(--light)}
+.dark{background:var(--dark)}
+.sq::after{content:attr(data-c);position:absolute;left:4px;bottom:2px;font-size:10px;font-weight:700;opacity:.45}
+.dark::after{color:#fff;opacity:.5}
+.w{color:#fff7ea;text-shadow:0 2px 10px rgba(0,0,0,.28)}
+.b{color:#131313;text-shadow:0 1px 3px rgba(255,255,255,.12)}
+.sel{outline:4px solid var(--accent);outline-offset:-4px}
+.hint{box-shadow:inset 0 0 0 4px rgba(22,119,255,.85)}
+.status{padding:0 14px 14px;color:var(--muted);font-size:14px}
+.status strong{color:var(--text)}
+.section{padding:16px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 10px}
+.palette{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px}
+.pieceBtn,.ghostBtn,.seg button,.primary,.miniBtn,select{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:16px;font:inherit}
+.pieceBtn{height:52px;font-size:28px}
+.pieceBtn.active{border-color:var(--accent);background:#f0f7ff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ghostBtn,.miniBtn,select{height:50px;padding:0 14px;font-weight:650}
+.castling{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.tick{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;font-size:14px;color:var(--muted)}
+.tick input{accent-color:var(--primary);width:18px;height:18px}
+.primary{width:100%;height:60px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:20px;font-weight:800;border-radius:18px;margin-top:12px}
+textarea{width:100%;min-height:70px;border:1px solid var(--line);border-radius:16px;padding:12px;font:inherit;font-size:13px;color:var(--muted);resize:vertical;background:#fafaf8}
+.best{padding:18px 16px 14px;background:var(--good);border-bottom:1px solid var(--line)}
+.bestLabel{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#4d6a8c;margin-bottom:6px}
+.bestMove{font-size:44px;font-weight:850;letter-spacing:-.04em;line-height:1;margin:0 0 6px}
+.meta{font-size:14px;color:var(--muted)}
+.explain{padding:14px 16px 16px;font-size:15px;line-height:1.45;color:#383836}
+.explain ul{margin:0;padding-left:18px}
+.listHead{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 10px}
+.count{font-size:18px;font-weight:800}
+.tableWrap{max-height:380px;overflow:auto;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px 12px;border-bottom:1px solid #f0f0eb;text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);position:sticky;top:0;background:#fff}
+.moveSan{font-size:18px;font-weight:800}
+.small{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#f2f4f7;font-size:11px;color:#4e5968;margin:0 4px 4px 0}
+.tag.hot{background:#111;color:#fff}
+@media (max-width:420px){
+  h1{font-size:28px}
+  .palette{grid-template-columns:repeat(4,1fr)}
+  .castling{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 <main class="app">
-  <div class="top"><div><div class="title">Tempo Chess Counsel</div><div class="sub">set exact board · analyze next move</div></div><div class="pill" id="ready">loading…</div></div>
-  <section class="card"><div id="board"></div><div class="status" id="status">Tap a piece below, then tap the board.</div></section>
-  <section class="card"><div class="panel grid">
-    <p class="label">Pieces — tap a placed piece to pick it up. Use × to erase.</p>
-    <div class="pieces" id="pieces"></div>
-    <div class="grid two"><button id="start">Starting position</button><button id="empty">Empty board</button></div>
-    <div class="grid two"><button id="flip">Flip board</button><select id="turn"><option value="w">White to move</option><option value="b">Black to move</option></select></div>
-    <div class="row"><label class="chip"><input id="K" type="checkbox" checked> White O-O</label><label class="chip"><input id="Q" type="checkbox" checked> White O-O-O</label><label class="chip"><input id="k" type="checkbox" checked> Black O-O</label><label class="chip"><input id="q" type="checkbox" checked> Black O-O-O</label></div>
-    <button class="primary analyze" id="analyze">Analyze this position →</button>
-    <textarea id="fen" spellcheck="false"></textarea>
-    <div class="grid two"><button id="load">Load FEN</button><button id="copy">Copy FEN</button></div>
-  </div></section>
-  <section class="card"><div class="best"><small>Best move</small><div class="bestMove" id="best">—</div><div class="meta" id="meta">Set the position, then analyze.</div></div><div class="explain" id="explain">This prototype uses chess.js for legal moves and a fast local advisor for ranking, so it works directly on your phone.</div></section>
-  <section class="card"><div class="panel"><p class="label" id="count">0 legal moves</p></div><div class="moves"><table><thead><tr><th>#</th><th>Move</th><th>Score</th><th>Idea</th><th>Tags</th></tr></thead><tbody id="rows"><tr><td colspan="5" class="small">No analysis yet.</td></tr></tbody></table></div></section>
+  <div class="header">
+    <div>
+      <div class="kicker">phone prototype</div>
+      <h1>Tempo Chess Counsel</h1>
+      <p class="sub">Set the exact position. Get every legal move and the clearest next move.</p>
+    </div>
+    <div class="badge" id="ready">loading</div>
+  </div>
+
+  <section class="card">
+    <div class="boardWrap"><div id="board"></div></div>
+    <div class="status" id="status"><strong>Ready.</strong> Tap a piece below, then tap the board.</div>
+  </section>
+
+  <section class="card">
+    <div class="section">
+      <p class="label">Pieces</p>
+      <div class="palette" id="pieces"></div>
+      <div class="grid2">
+        <button class="ghostBtn" id="start">Starting position</button>
+        <button class="ghostBtn" id="empty">Empty board</button>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <button class="ghostBtn" id="flip">Flip board</button>
+        <select id="turn"><option value="w">White to move</option><option value="b">Black to move</option></select>
+      </div>
+      <div class="castling">
+        <label class="tick"><input id="K" type="checkbox" checked> White O-O</label>
+        <label class="tick"><input id="Q" type="checkbox" checked> White O-O-O</label>
+        <label class="tick"><input id="k" type="checkbox" checked> Black O-O</label>
+        <label class="tick"><input id="q" type="checkbox" checked> Black O-O-O</label>
+      </div>
+      <button class="primary" id="analyze">Analyze this position</button>
+      <div style="margin-top:12px">
+        <p class="label">FEN</p>
+        <textarea id="fen" spellcheck="false"></textarea>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <button class="miniBtn" id="load">Load FEN</button>
+        <button class="miniBtn" id="copy">Copy FEN</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="best">
+      <div class="bestLabel">Best move</div>
+      <div class="bestMove" id="best">—</div>
+      <div class="meta" id="meta">Set the position and tap analyze.</div>
+    </div>
+    <div class="explain" id="explain">This should feel like a clean mobile tool, not a dressed-up mockup.</div>
+  </section>
+
+  <section class="card">
+    <div class="listHead">
+      <div class="count" id="count">0 legal moves</div>
+      <div class="small">all candidates</div>
+    </div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>#</th><th>Move</th><th>Score</th><th>Idea</th><th>Tags</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="5" class="small">No analysis yet.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
 </main>
 <script>
-const S={wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'};
-const V={p:100,n:320,b:330,r:500,q:900,k:0};
-const files='abcdefgh'.split('');
-const start='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
-let board={}, orientation='w', selected='wP', picked=null, lastBest=null;
+const ICONS={wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'};
+const VAL={p:100,n:320,b:330,r:500,q:900,k:0};
+const FILES='abcdefgh'.split('');
+const START='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+let pos={},orientation='w',selected='wP',picked=null,lastBest=null;
 const $=id=>document.getElementById(id);
-function init(){if(typeof Chess==='undefined'){$('ready').textContent='engine failed';$('ready').className='pill err';return}$('ready').textContent='ready';makePalette();loadFen('start');bind();render();}
-function bind(){['turn','K','Q','k','q'].forEach(id=>$(id).addEventListener('change',updateFen));$('start').onclick=()=>loadFen('start');$('empty').onclick=()=>{board={};picked=null;lastBest=null;updateFen();render('Empty board. Place pieces.');};$('flip').onclick=()=>{orientation=orientation==='w'?'b':'w';render('Board flipped.');};$('analyze').onclick=analyze;$('load').onclick=()=>loadFen($('fen').value.trim());$('copy').onclick=()=>{updateFen();navigator.clipboard?.writeText($('fen').value);render('FEN copied or ready to copy.');};}
-function makePalette(){const p=$('pieces');Object.keys(S).concat('erase').forEach(code=>{let b=document.createElement('button');b.className='pieceBtn';b.textContent=code==='erase'?'×':S[code];b.onclick=()=>{selected=code;picked=null;document.querySelectorAll('.pieceBtn').forEach(x=>x.classList.toggle('active',x===b));render(`Selected ${code==='erase'?'eraser':code}.`)};p.appendChild(b);});p.firstChild.classList.add('active');}
-function loadFen(f){try{let fen=f==='start'?start+' w KQkq - 0 1':f;let c=new Chess(fen);board={};let ranks=c.fen().split(' ')[0].split('/');for(let r=0;r<8;r++){let file=0;for(let ch of ranks[r]){if(/\d/.test(ch))file+=+ch;else{let col=ch===ch.toUpperCase()?'w':'b';board[files[file]+(8-r)]=col+ch.toUpperCase();file++;}}}let parts=c.fen().split(' ');$('turn').value=parts[1];['K','Q','k','q'].forEach(x=>$(x).checked=parts[2].includes(x));picked=null;lastBest=null;updateFen();render('Position loaded.');}catch(e){render('FEN not valid: '+e.message,true);}}
-function fenBoard(){let out=[];for(let r=8;r>=1;r--){let row='',empty=0;for(let f of files){let p=board[f+r];if(!p)empty++;else{if(empty){row+=empty;empty=0}let ch=p[1];row+=p[0]==='w'?ch:ch.toLowerCase();}}if(empty)row+=empty;out.push(row)}return out.join('/');}
-function castle(){let s='';['K','Q','k','q'].forEach(x=>{if($(x).checked)s+=x});return s||'-'}
-function fen(){return `${fenBoard()} ${$('turn').value} ${castle()} - 0 1`}
-function updateFen(){$('fen').value=fen();}
-function render(msg,bad=false){const el=$('board');el.innerHTML='';let ranks=orientation==='w'?[8,7,6,5,4,3,2,1]:[1,2,3,4,5,6,7,8];let fs=orientation==='w'?files:[...files].reverse();for(let r of ranks)for(let f of fs){let sq=f+r,d=document.createElement('div');d.className='sq '+(((files.indexOf(f)+r)%2)?'light':'dark');d.dataset.c=(f==='a'||f==='h'||r===1||r===8)?sq:'';if(picked===sq)d.classList.add('sel');if(lastBest&&(lastBest.from===sq||lastBest.to===sq))d.classList.add('hint');let p=board[sq];if(p){let span=document.createElement('span');span.textContent=S[p];span.className=p[0];d.appendChild(span)}d.onclick=()=>tap(sq);el.appendChild(d)}updateFen();if(msg)$('status').innerHTML=`<strong>${bad?'Error':'Ready'}.</strong> ${esc(msg)}`;}
-function tap(sq){if(picked){if(picked!==sq){board[sq]=board[picked];delete board[picked];}picked=null;lastBest=null;render('Piece moved.');return}if(selected==='erase'){delete board[sq];lastBest=null;render('Square erased.');return}if(board[sq]){picked=sq;render('Picked up '+sq+'. Tap destination.');return}board[sq]=selected;lastBest=null;render('Piece placed on '+sq+'.');}
-function analyze(){try{let c=new Chess(fen());let moves=c.moves({verbose:true});$('count').textContent=moves.length+' legal move'+(moves.length===1?'':'s');if(!moves.length){$('best').textContent=c.in_checkmate()?'Mate':'Draw';$('meta').textContent=c.in_checkmate()?'Side to move is checkmated.':'Stalemate.';return}let side=c.turn();let rows=moves.map(m=>scoreMove(c.fen(),m,side)).sort((a,b)=>b.score-a.score);let top=rows[0];lastBest=top.move;$('best').textContent=top.move.san;$('meta').textContent=`${scoreText(top.score)} · ${moves.length} legal moves checked instantly on phone.`;$('explain').innerHTML=explain(top);$('rows').innerHTML=rows.map((r,i)=>`<tr><td class="small">${i+1}</td><td><span class="san">${esc(r.move.san)}</span><br><span class="small">${r.move.from}${r.move.to}${r.move.promotion||''}</span></td><td>${scoreText(r.score)}</td><td>${esc(r.idea)}</td><td>${r.tags.map(t=>`<span class="tag ${i===0?'hot':''}">${esc(t)}</span>`).join('')||'<span class="small">quiet</span>'}</td></tr>`).join('');render('Analysis finished. Best move highlighted.');}catch(e){render('Cannot analyze: '+e.message,true);}}
-function scoreMove(fen0,m,side){let c=new Chess(fen0);c.move(m);let score=evalFor(c,side);let tags=[];if(c.in_checkmate()){score+=50000;tags.push('mate')}else if(c.in_check()){score+=90;tags.push('check')}if(m.captured){score+=(V[m.captured]||0);tags.push('capture')}if(m.promotion){score+=(V[m.promotion]||800);tags.push('promotion')}if(['d4','e4','d5','e5'].includes(m.to)){score+=35;tags.push('center')}if(m.flags.includes('k')||m.flags.includes('q')){score+=70;tags.push('castle')}if((m.piece==='n'||m.piece==='b')&&['b1','g1','b8','g8','c1','f1','c8','f8'].includes(m.from)){score+=30;tags.push('development')}let replies=c.moves({verbose:true});if(replies.length){let worst=Math.max(...replies.map(r=>replyDanger(c.fen(),r,side)));score-=Math.min(260,worst)}return{move:m,score,tags,idea:idea(tags,m)}}
-function replyDanger(f,m,side){let c=new Chess(f);c.move(m);let danger=0;if(m.captured)danger+=V[m.captured]||0;if(c.in_checkmate())danger+=50000;if(c.in_check())danger+=80;return danger}
-function evalFor(c,side){let val=0;for(let row of c.board())for(let p of row)if(p)val+=(p.color===side?1:-1)*(V[p.type]||0);let mob=(c.turn()===side?1:-1)*c.moves().length*2;return val+mob}
-function scoreText(n){if(n>20000)return 'mate';if(n<-20000)return 'lost';return (n>0?'+':'')+(n/100).toFixed(2)}
-function idea(tags,m){if(tags.includes('mate'))return 'Checkmate. Nothing outranks that.';if(tags.includes('check'))return 'Forcing move; reduces replies.';if(tags.includes('capture'))return 'Wins or clarifies material; check defenders.';if(tags.includes('castle'))return 'Improves king safety and connects rooks.';if(tags.includes('development'))return 'Activates an undeveloped piece.';if(tags.includes('center'))return 'Claims useful central control.';return 'Quiet candidate; improves activity or limits counterplay.'}
-function explain(r){let bits=[`The advisor chooses <b>${esc(r.move.san)}</b> because it ranks highest after checking every legal move.`];if(r.tags.includes('check'))bits.push('It is forcing, which is why it gets priority.');if(r.tags.includes('capture'))bits.push('It has immediate material/tactical value.');if(r.tags.includes('center'))bits.push('It improves central influence, which usually improves future piece activity.');if(r.tags.includes('development'))bits.push('It follows the clean instructional rule: develop inactive pieces before decoration.');bits.push('<b>Human takeaway:</b> first inspect checks, captures and threats; then choose the move that improves the most pieces while allowing the least counterplay.');return '<ul><li>'+bits.join('</li><li>')+'</li></ul>'}
-function esc(s){return String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]))}
+
+function init(){
+  if(typeof Chess==='undefined'){
+    $('ready').textContent='script error';
+    $('status').innerHTML='<strong>Error.</strong> Chess engine did not load.';
+    return;
+  }
+  $('ready').textContent='ready';
+  buildPalette();
+  bind();
+  loadFen('start');
+}
+
+function bind(){
+  ['turn','K','Q','k','q'].forEach(id=>$(id).addEventListener('change',syncFen));
+  $('start').onclick=()=>loadFen('start');
+  $('empty').onclick=()=>{pos={};picked=null;lastBest=null;syncFen();draw('Empty board. Place pieces.');};
+  $('flip').onclick=()=>{orientation=orientation==='w'?'b':'w';draw('Board flipped.');};
+  $('analyze').onclick=analyze;
+  $('load').onclick=()=>loadFen($('fen').value.trim());
+  $('copy').onclick=()=>{syncFen();navigator.clipboard?.writeText($('fen').value);draw('FEN copied.');};
+}
+
+function buildPalette(){
+  const box=$('pieces');
+  [...Object.keys(ICONS),'erase'].forEach(code=>{
+    const b=document.createElement('button');
+    b.className='pieceBtn';
+    b.textContent=code==='erase'?'×':ICONS[code];
+    if(code==='wP') b.classList.add('active');
+    b.onclick=()=>{
+      selected=code;picked=null;
+      [...box.children].forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      draw(code==='erase'?'Eraser selected.':'Selected '+code+'.');
+    };
+    box.appendChild(b);
+  });
+}
+
+function loadFen(input){
+  try{
+    const full=input==='start'?START+' w KQkq - 0 1':input;
+    const game=new Chess(full);
+    pos={};
+    const parts=game.fen().split(' ');
+    const rows=parts[0].split('/');
+    for(let r=0;r<8;r++){
+      let f=0;
+      for(const ch of rows[r]){
+        if(/\d/.test(ch)){f+=+ch;continue;}
+        const side=ch===ch.toUpperCase()?'w':'b';
+        pos[FILES[f]+(8-r)] = side + ch.toUpperCase();
+        f++;
+      }
+    }
+    $('turn').value=parts[1];
+    ['K','Q','k','q'].forEach(flag=>$(flag).checked=parts[2].includes(flag));
+    picked=null; lastBest=null;
+    syncFen(); draw('Position loaded.');
+  }catch(err){ draw('Invalid FEN: '+err.message,true); }
+}
+
+function boardFen(){
+  const rows=[];
+  for(let rank=8;rank>=1;rank--){
+    let row='',empty=0;
+    for(const file of FILES){
+      const p=pos[file+rank];
+      if(!p){empty++;continue;}
+      if(empty){row+=empty;empty=0;}
+      const ch=p[1];
+      row += p[0]==='w' ? ch : ch.toLowerCase();
+    }
+    if(empty) row+=empty;
+    rows.push(row);
+  }
+  return rows.join('/');
+}
+
+function castling(){
+  let s=''; ['K','Q','k','q'].forEach(f=>{if($(f).checked)s+=f;});
+  return s || '-';
+}
+
+function fen(){ return `${boardFen()} ${$('turn').value} ${castling()} - 0 1`; }
+function syncFen(){ $('fen').value=fen(); }
+
+function draw(message,isError=false){
+  const el=$('board'); el.innerHTML='';
+  const ranks=orientation==='w'?[8,7,6,5,4,3,2,1]:[1,2,3,4,5,6,7,8];
+  const files=orientation==='w'?FILES:[...FILES].reverse();
+  for(const rank of ranks){
+    for(const file of files){
+      const sq=file+rank;
+      const d=document.createElement('div');
+      d.className='sq '+(((FILES.indexOf(file)+rank)%2)?'light':'dark');
+      d.dataset.c=(file==='a'||file==='h'||rank===1||rank===8)?sq:'';
+      if(picked===sq) d.classList.add('sel');
+      if(lastBest && (lastBest.from===sq || lastBest.to===sq)) d.classList.add('hint');
+      const p=pos[sq];
+      if(p){ const s=document.createElement('span'); s.className=p[0]; s.textContent=ICONS[p]; d.appendChild(s); }
+      d.onclick=()=>tapSquare(sq);
+      el.appendChild(d);
+    }
+  }
+  syncFen();
+  if(message) $('status').innerHTML=`<strong>${isError?'Error':'Ready'}.</strong> ${escapeHtml(message)}`;
+}
+
+function tapSquare(sq){
+  if(picked){
+    if(picked!==sq){ pos[sq]=pos[picked]; delete pos[picked]; }
+    picked=null; lastBest=null; draw('Piece moved.'); return;
+  }
+  if(selected==='erase'){ delete pos[sq]; lastBest=null; draw('Square erased.'); return; }
+  if(pos[sq]){ picked=sq; draw('Picked up '+sq+'. Tap the destination square.'); return; }
+  pos[sq]=selected; lastBest=null; draw('Placed on '+sq+'.');
+}
+
+function analyze(){
+  try{
+    const game=new Chess(fen());
+    const side=game.turn();
+    const legal=game.moves({verbose:true});
+    $('count').textContent=`${legal.length} legal move${legal.length===1?'':'s'}`;
+    if(!legal.length){
+      $('best').textContent=game.in_checkmate()?'Mate':'Draw';
+      $('meta').textContent=game.in_checkmate()?'Side to move is checkmated.':'No legal moves.';
+      $('rows').innerHTML='<tr><td colspan="5" class="small">No legal moves in this position.</td></tr>';
+      return;
+    }
+    const ranked=legal.map(m=>rankMove(game.fen(),m,side)).sort((a,b)=>b.score-a.score);
+    const top=ranked[0];
+    lastBest=top.move;
+    $('best').textContent=top.move.san;
+    $('meta').textContent=`${scoreText(top.score)} · best practical move from ${legal.length} legal options.`;
+    $('explain').innerHTML=explain(top);
+    $('rows').innerHTML=ranked.map((r,i)=>`<tr>
+      <td class="small">${i+1}</td>
+      <td><div class="moveSan">${escapeHtml(r.move.san)}</div><div class="small">${r.move.from}${r.move.to}${r.move.promotion||''}</div></td>
+      <td>${scoreText(r.score)}</td>
+      <td>${escapeHtml(r.idea)}</td>
+      <td>${(r.tags.length?r.tags:['quiet']).map(t=>`<span class="tag ${i===0?'hot':''}">${escapeHtml(t)}</span>`).join('')}</td>
+    </tr>`).join('');
+    draw('Analysis complete. Best move highlighted on the board.');
+  }catch(err){ draw('Cannot analyze this position: '+err.message,true); }
+}
+
+function rankMove(baseFen,move,side){
+  const game=new Chess(baseFen);
+  game.move(move);
+  let score=evaluate(game,side);
+  const tags=[];
+  if(game.in_checkmate()){score+=50000; tags.push('mate');}
+  else if(game.in_check()){score+=100; tags.push('check');}
+  if(move.captured){score+=(VAL[move.captured]||0); tags.push('capture');}
+  if(move.promotion){score+=(VAL[move.promotion]||800); tags.push('promotion');}
+  if(['d4','e4','d5','e5'].includes(move.to)){score+=28; tags.push('center');}
+  if(move.flags.includes('k') || move.flags.includes('q')){score+=65; tags.push('castle');}
+  if((move.piece==='n'||move.piece==='b') && ['b1','g1','b8','g8','c1','f1','c8','f8'].includes(move.from)){score+=26; tags.push('development');}
+  const replies=game.moves({verbose:true});
+  if(replies.length){
+    const counter=Math.max(...replies.map(r=>counterPunch(game.fen(),r)));
+    score -= Math.min(counter,220);
+  }
+  return {move,score,tags,idea:idea(tags)};
+}
+
+function counterPunch(f,move){
+  const g=new Chess(f); g.move(move);
+  let d=0;
+  if(move.captured) d+=VAL[move.captured]||0;
+  if(g.in_check()) d+=80;
+  if(g.in_checkmate()) d+=50000;
+  return d;
+}
+
+function evaluate(game,side){
+  let material=0;
+  for(const row of game.board()){
+    for(const p of row){
+      if(!p) continue;
+      material += (p.color===side?1:-1)*(VAL[p.type]||0);
+    }
+  }
+  const mobility=(game.turn()===side?1:-1)*game.moves().length*2;
+  return material+mobility;
+}
+
+function idea(tags){
+  if(tags.includes('mate')) return 'Finishes the game immediately.';
+  if(tags.includes('check')) return 'Forcing move that limits the opponent’s replies.';
+  if(tags.includes('capture')) return 'Wins or clarifies material.';
+  if(tags.includes('castle')) return 'Improves king safety and rook connection.';
+  if(tags.includes('development')) return 'Activates a sleeping piece.';
+  if(tags.includes('center')) return 'Strengthens central control.';
+  return 'Improves the position without immediate tactics.';
+}
+
+function explain(best){
+  const notes=[`<b>${escapeHtml(best.move.san)}</b> ranks first after checking every legal move in this position.`];
+  if(best.tags.includes('mate')) notes.push('It ends the game, so nothing can outrank it.');
+  if(best.tags.includes('check')) notes.push('It is forcing, which usually makes calculation cleaner and stronger.');
+  if(best.tags.includes('capture')) notes.push('It has direct tactical or material value.');
+  if(best.tags.includes('castle')) notes.push('It improves king safety — often the most useful practical upgrade.');
+  if(best.tags.includes('development')) notes.push('It follows a strong teaching principle: bring inactive pieces into the game.');
+  if(best.tags.includes('center')) notes.push('It improves central influence and future piece activity.');
+  notes.push('Human shortcut: first compare checks, captures and threats, then prefer the move that improves the most while allowing the least counterplay.');
+  return '<ul><li>'+notes.join('</li><li>')+'</li></ul>';
+}
+
+function scoreText(score){
+  if(score>20000) return 'mate';
+  if(score<-20000) return 'lost';
+  return (score>=0?'+':'') + (score/100).toFixed(2);
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 window.addEventListener('load',init);
 </script>
 </body>
